@@ -52,10 +52,22 @@ describe('the carried Claude Code pieces', () => {
     expect(typeof personality).toBe('object')
     // Exactly the keys the applier whitelists, and nothing that could be a token,
     // an allow-list, or a credential path.
-    const allowed = new Set(['model', 'language'])
+    const allowed = new Set(['model'])
     for (const key of Object.keys(personality)) {
       expect(allowed.has(key), `personality.json carries a non-whitelisted key: ${key}`).toBe(true)
     }
+  })
+
+  it('leaves the answering language to the panel rather than carrying one', () => {
+    // The PT/EN switch is what Claude Code answers in. A language in the carried
+    // file would be a second source for the same answer, and the one the user
+    // can see has to win — so the applier names both languages itself and
+    // whitelists only the model.
+    const personality = JSON.parse(fs.readFileSync(PERSONALITY, 'utf8'))
+    expect('language' in personality).toBe(false)
+    const adapter = fs.readFileSync(ADAPTER, 'utf8')
+    expect(adapter).toContain("PERSONALITY_KEYS = Object.freeze(['model'])")
+    expect(adapter).toContain('languages.claudeName(language)')
   })
 })
 

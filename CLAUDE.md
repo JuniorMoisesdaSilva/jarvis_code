@@ -15,8 +15,8 @@ two hidden ones they do not:
 
 - `Brain/` — everything Jarvis carries into a machine's Claude Code, as plain
   files: `MAESTRO.md` (how it works), `BEHAVIOUR.md` (how it talks), `LAYOUT.js`
-  and `LAYOUT.json` (what it draws, and the model and language it sets), and
-  `matt/`. **The only copy.** Jarvis reads them from here, so editing one of
+  and `LAYOUT.json` (what it draws, and the model it sets — the answering
+  language comes from the panel's switch), and `matt/`. **The only copy.** Jarvis reads them from here, so editing one of
   these is editing what travels. They are placed on a host under the names
   Claude Code looks for, which are not these.
 - `Resources/` — the voices and the listening model, one copy read by both

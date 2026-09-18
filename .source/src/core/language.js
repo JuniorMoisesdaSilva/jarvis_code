@@ -60,6 +60,17 @@ function recallConversationsPrompt(language, relativePaths) {
         `lines where we left off.`
 }
 
+/**
+ * The name Claude Code is told to answer in, which is the panel's switch and
+ * nothing else: EN answers in English, PT in Portuguese, alongside the engine
+ * that hears and the voice that reads. Claude Code's setting takes the
+ * language's own name, and it reads it when a session starts — so a switch
+ * reaches the next session rather than the answer being written now.
+ */
+function claudeName(language) {
+  return language === PORTUGUESE ? 'portuguese' : 'english'
+}
+
 /** Cyclic toggle, used by the button and the keyboard shortcut. */
 function next(language) {
   return language === PORTUGUESE ? ENGLISH : PORTUGUESE
@@ -78,6 +89,7 @@ module.exports = {
   sessionEndedNotice,
   newAnswerNotice,
   recallConversationsPrompt,
+  claudeName,
   next,
   isLanguage,
 }

@@ -15,6 +15,7 @@ const path = require('node:path')
 const { app } = require('electron')
 const { createConfigurator, UnreadableSettingsError } = require('../core/claude-config')
 const platform = require('../core/platform')
+const languages = require('../core/language')
 
 /**
  * The Brain compartment, at the folder's root rather than inside the app.
@@ -36,11 +37,16 @@ const OUTPUT_STYLE = 'Resumo leigo'
 
 /**
  * The only Claude Code settings the carried personality is allowed to set.
- * A deliberately short list: model and language are behaviour, not secrets.
- * Anything else in personality.json — a stray `permissions` block, an `env`
- * with a token in it — is ignored rather than trusted onto someone's machine.
+ * A deliberately short list: the model is behaviour, not a secret. Anything
+ * else in LAYOUT.json — a stray `permissions` block, an `env` with a token in
+ * it — is ignored rather than trusted onto someone's machine.
+ *
+ * The language was carried here too, until the panel's PT/EN switch became what
+ * Claude Code answers in. A carried default and a switch on screen would
+ * disagree the moment the switch was pressed, and the one the user can see has
+ * to win, so the language is passed in rather than read from the file.
  */
-const PERSONALITY_KEYS = Object.freeze(['model', 'language'])
+const PERSONALITY_KEYS = Object.freeze(['model'])
 
 /** The carried status line script, resolved on this disk. */
 function statusLineScript() {
@@ -102,21 +108,23 @@ function carriedPersonality() {
 }
 
 /**
- * Everything Jarvis wants Claude Code to be. Resolved once and remembered: the
- * app path, the carried personality and the style name do not change while the
- * app runs, and this is read on every settings-sheet poll, so re-reading
- * personality.json each time is avoidable blocking I/O on the main process.
+ * Everything Jarvis wants Claude Code to be, for the language the panel is
+ * showing. Resolved once per language and remembered: the app path, the carried
+ * personality and the style name do not change while the app runs, and this is
+ * read on every settings-sheet poll, so re-reading LAYOUT.json each time is
+ * avoidable blocking I/O on the main process.
  */
-let desiredMemo = null
-function desired() {
-  if (!desiredMemo) {
-    desiredMemo = {
+const desiredMemo = new Map()
+function desired(language) {
+  if (!desiredMemo.has(language)) {
+    desiredMemo.set(language, {
       outputStyle: OUTPUT_STYLE,
       statusLine: statusLineCommand(),
+      language: languages.claudeName(language),
       ...carriedPersonality(),
-    }
+    })
   }
-  return desiredMemo
+  return desiredMemo.get(language)
 }
 
 /**
@@ -130,11 +138,12 @@ function memoryFile() {
   return path.join(path.dirname(hooks.settingsFile()), '.jarvis-config-memory.json')
 }
 
-function configurator() {
+/** @param language the panel's chosen language, which Claude Code answers in. */
+function configurator(language) {
   return createConfigurator({
     settingsFile: hooks.settingsFile(),
     memoryFile: memoryFile(),
-    desired: desired(),
+    desired: desired(language),
     placements: [
       { source: styleSource(), destination: styleDestination(), legacy: true },
       ...maestro.placements(),

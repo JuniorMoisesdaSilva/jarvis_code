@@ -606,13 +606,21 @@ function createSession({ win, deps }) {
   }
 
   function refreshHookState() {
+    // The switch is one choice for the whole app, and every window is refreshed
+    // whenever one of them changes the connection. So a window that did not
+    // press the switch catches up here, before it asks whether the host is
+    // already saying what Jarvis wants it to say — otherwise it would answer
+    // for a language nobody is showing any more.
+    const stored = settings()
+    if (stored.language !== core.state.language) dispatch(user.languageToggled())
+
     try {
       surface.hooksInstalled = hooks.installer().isInstalled()
     } catch {
       surface.hooksInstalled = false
     }
     try {
-      surface.claudeApplied = claudeConfig.configurator().isApplied()
+      surface.claudeApplied = claudeConfig.configurator(core.state.language).isApplied()
     } catch {
       surface.claudeApplied = false
     }
@@ -627,8 +635,27 @@ function createSession({ win, deps }) {
   function installHooks() {
     try {
       hooks.installer().install()
-      claudeConfig.configurator().apply()
+      claudeConfig.configurator(core.state.language).apply()
       say('Jarvis is connected: it hears Claude Code, and reads its answers aloud.')
+    } catch (error) {
+      report(error?.message ?? 'Could not write to Claude Code’s configuration.')
+    }
+    deps.broadcastHookState()
+  }
+
+  /**
+   * The panel's PT/EN switch is what Claude Code answers in, so pressing it has
+   * to reach the host's settings as well as the microphone and the voice.
+   *
+   * Only while Jarvis is connected: a machine Jarvis was never plugged into is
+   * one it writes nothing to, and Connect will carry the language over anyway.
+   * Claude Code reads the setting when a session starts, so the new language
+   * arrives with the next session rather than mid-answer.
+   */
+  function followLanguage() {
+    if (!surface.claudeApplied) return
+    try {
+      claudeConfig.configurator(core.state.language).apply()
     } catch (error) {
       report(error?.message ?? 'Could not write to Claude Code’s configuration.')
     }
@@ -637,7 +664,7 @@ function createSession({ win, deps }) {
 
   function removeHooks() {
     try {
-      claudeConfig.configurator().remove()
+      claudeConfig.configurator(core.state.language).remove()
       hooks.installer().uninstall()
       say('Jarvis is disconnected, and Claude Code is back the way it was.')
     } catch (error) {
@@ -655,10 +682,13 @@ function createSession({ win, deps }) {
     surface.modelPresent = dictation.isModelPresent(stored.model ?? models.DEFAULT)
     rememberAppearance(stored)
     broadcastAppearance()
-    refreshHookState()
 
     if (stored.autoRead !== core.state.autoRead) dispatch(user.autoReadSet(stored.autoRead))
+    // Before the hook state is read: what Claude Code should answer in is the
+    // remembered language, so asking whether the host already says so has to
+    // come after the language is back.
     if (stored.language !== core.state.language) dispatch(user.languageToggled())
+    refreshHookState()
 
     // A project left open last time is offered, not reopened: a shell Jarvis
     // started does not outlive Jarvis, so there is nothing to reattach to.
@@ -727,7 +757,15 @@ function createSession({ win, deps }) {
     pauseSpeech: () => dispatch(user.pauseSpeechPressed()),
     resumeSpeech: () => dispatch(user.resumeSpeechPressed()),
     replayReading: (id) => dispatch(user.replayReadingPressed(id)),
-    toggleLanguage: () => dispatch(user.languageToggled()),
+    toggleLanguage: () => {
+      dispatch(user.languageToggled())
+      try {
+        preferences.write({ language: core.state.language })
+      } catch (error) {
+        report(error?.message ?? 'Could not remember that setting.')
+      }
+      followLanguage()
+    },
     setAutoRead: (enabled) => {
       try {
         preferences.write({ autoRead: Boolean(enabled) })

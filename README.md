@@ -65,16 +65,20 @@ Two things are yours to do, once:
 1. **Connect Jarvis to Claude Code.** Open Settings from the rail's footer and
    press Connect under "Claude Code". This installs the five Agent event hooks
    and applies Jarvis's behaviour — the spoken-summary output style, the two-line
-   status line, and the model and language it answers in — into your global
-   Claude Code configuration, keeping a copy of the file first. Disconnect puts
-   it all back the way it was. It never touches your login or your permissions.
-   Without it, Jarvis never learns that an answer finished or that permission was
-   asked for. Out of the box it answers in Brazilian Portuguese; that, and the
-   model it sets, are the two lines in `Brain/LAYOUT.json`.
+   status line, the model, and the language Claude Code answers in — into your
+   global Claude Code configuration, keeping a copy of the file first. Disconnect
+   puts it all back the way it was. It never touches your login or your
+   permissions. Without it, Jarvis never learns that an answer finished or that
+   permission was asked for.
 2. **Allow the microphone.** On Windows: Settings → Privacy & security →
    Microphone, including "Let desktop apps access your microphone". On macOS the
    box appears the first time you speak; if you miss it, System Settings →
    Privacy & Security → Microphone.
+
+The PT/EN switch in the panel decides all three at once: the engine that hears
+you, the voice that reads to you, and the language Claude Code answers in. It
+opens on PT, and Claude Code picks the change up when a session starts, so it
+arrives with the next session rather than mid-answer.
 
 Jarvis opens with nothing running. Choose a project folder with "New session…"
 in the rail and it opens a shell there — PowerShell on Windows, your own login
