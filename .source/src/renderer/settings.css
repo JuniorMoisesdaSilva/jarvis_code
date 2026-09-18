@@ -1,0 +1,196 @@
+/* Settings: a sheet that slides over the rail.
+ *
+ * It used to be a strip wedged between the terminal and the rail, which meant
+ * opening it took 380px off the terminal — you could not read what you were
+ * configuring. It now covers the rail instead, and the terminal keeps every
+ * pixel it had.
+ *
+ * Each section is a label and its contents. The grey boxes are gone: nesting a
+ * card inside a card inside a pane made three borders to look past before
+ * reaching a text field.
+ */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+}
+
+h1 {
+  margin: 0;
+  margin-right: auto;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6) var(--space-8);
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.note.warn,
+.note.good {
+  color: var(--accent-ink);
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.btn-tiny {
+  font-size: 12px;
+  padding: 4px 9px;
+}
+
+.hooks-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--accent-ink);
+}
+
+.hooks-line .ph {
+  font-size: 15px;
+}
+
+select.input {
+  appearance: none;
+  cursor: pointer;
+  /* Room for the caret the browser no longer draws for us. */
+  padding-right: 28px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted-strong) 50%),
+    linear-gradient(135deg, var(--muted-strong) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) calc(50% + 1px),
+    calc(100% - 10px) calc(50% + 1px);
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+select.input option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.value {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.seg-wide {
+  display: flex;
+  width: 100%;
+}
+
+.seg-wide .seg-opt {
+  flex: 1;
+}
+
+/* --- Command buttons ------------------------------------------------------ */
+
+.table th.middle,
+.table td.middle {
+  width: 1%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table td .input {
+  min-height: 28px;
+  padding: 3px 7px;
+  font-size: 12px;
+  background: transparent;
+}
+
+.table td .input.command {
+  font-family: var(--font-mono);
+}
+
+.table td input[type='checkbox'] {
+  accent-color: var(--color-accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.table td .btn {
+  font-size: 12px;
+  padding: 3px 7px;
+  color: var(--muted-strong);
+}
+
+.table td .btn:hover {
+  color: var(--color-text);
+}
+
+/* --- Saving --------------------------------------------------------------- */
+
+.status {
+  font-size: 11px;
+}
+
+.saved {
+  color: var(--accent-ink);
+}
+
+.failed {
+  color: var(--color-text);
+  opacity: 0.85;
+}

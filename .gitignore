@@ -1,0 +1,31 @@
+# What Jarvis writes about itself — preferences, and any model it downloads.
+.jarvis-data/
+
+# This project's own conversation history, written by Jarvis while it is used
+# to build itself. It belongs to the project and is not committed.
+.jarvis/
+
+# The heavy compartments. Each keeps its README so the folder explains itself;
+# everything else in them is fetched or assembled, never edited by hand.
+/Resources/*
+!/Resources/README.md
+/Windows/*
+!/Windows/README.md
+/macOS/*
+!/macOS/README.md
+
+# The working archive — the spec, the vocabulary, the decisions and the history
+# of how each effort was arrived at. It is kept in the private repository and
+# does not travel with this public copy.
+/Docs/
+
+# Dependencies, per platform.
+node_modules/
+
+# The Windows launcher's shortcut. It carries the icon, and with it this
+# machine's own absolute paths, so it is made where it is used.
+/Start Here/*.lnk
+
+# macOS resource forks, left behind when files travel through a Mac.
+._*
+.DS_Store

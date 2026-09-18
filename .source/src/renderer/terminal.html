@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Jarvis — Terminal</title>
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="terminal.css" />
+  </head>
+  <body>
+    <!-- Nothing above the terminal any more. What this pane used to say about
+         itself — the project, where it is, whether a shell is open and whether
+         Claude Code reports — is in the panel's session strip, which is the one
+         line in the window that names the session anyway.
+
+         The frame holds the breathing room, and the terminal itself holds none:
+         what xterm measures to decide how many rows and columns fit is the box
+         it was opened in, and a padded box answers with the padding included.
+         Two rows and four columns too many, drawn past the bottom edge. -->
+    <div class="term-frame">
+      <div id="terminal"></div>
+    </div>
+
+    <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+    <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script src="terminal.js"></script>
+  </body>
+</html>

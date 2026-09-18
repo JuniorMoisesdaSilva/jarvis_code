@@ -1,0 +1,602 @@
+/* Industry — the design system the whole window is built from.
+ *
+ * It replaced Nocturne on 16 September 2026; see
+ * `Docs/decisions/0028-the-window-is-drawn-as-a-wireframe.md`. Industry is a
+ * wireframe: a steel-blue accent on a technical ground, Barlow Condensed over
+ * Barlow, square corners, and cards drawn as line objects with registration
+ * marks at their corners rather than filled blocks. One object on the board is
+ * solid — the primary button — and that is deliberate.
+ *
+ * Two layers live here, as they did under Nocturne. The first is the system
+ * itself: the tonal ramps, the spacing and radius steps, the type. The second
+ * is the set of *roles* a theme swaps — the ground, the accent, the tint the
+ * Dock is painted in. Only the roles change between Dark, Light and Iron Man;
+ * the ramps beneath them stay put, which is what keeps one theme from needing
+ * its own components.
+ *
+ * The three themes keep the names they are stored under and take Industry's
+ * own grounds: Dark is **slate** (steel as the ground, paper reversed onto it,
+ * the one full field the system allows), Light is **paper**, and Iron Man is
+ * Industry's geometry over the gold palette it always had.
+ *
+ * The fonts are vendored beside this file rather than fetched: every renderer
+ * runs under `default-src 'self'`, and a CDN is not 'self'. The icons stay
+ * Phosphor — Industry draws with Lucide, and the handoff says in as many words
+ * to vendor it or keep Phosphor. Phosphor is already here and already maps to
+ * every glyph this window uses.
+ */
+
+@import url('./assets/barlow/barlow.css');
+@import url('./assets/phosphor/phosphor.css');
+
+:root {
+  /* — the system —
+       The ramps are generated in OKLCH on one shared lightness scale, so the
+       same step of any role has the same visual weight. Prefer a ramp step to
+       an ad-hoc colour-mix. */
+  --color-neutral-100: #f5f5f8;
+  --color-neutral-200: #e7e7ea;
+  --color-neutral-300: #d4d4d7;
+  --color-neutral-400: #b7b7ba;
+  --color-neutral-500: #98989b;
+  --color-neutral-600: #7a7a7d;
+  --color-neutral-700: #5d5d60;
+  --color-neutral-800: #424244;
+  --color-neutral-900: #2b2b2d;
+
+  --color-accent-100: #eef6ff;
+  --color-accent-200: #d6ebff;
+  --color-accent-300: #b5d9fd;
+  --color-accent-400: #94bce3;
+  --color-accent-500: #749dc4;
+  --color-accent-600: #597ea3;
+  --color-accent-700: #416180;
+  --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;
+
+  --font-heading: 'Barlow Condensed', system-ui, sans-serif;
+  --font-heading-weight: 600;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  /* Industry's scale, at its own 0.85 density. Larger than Nocturne's at every
+     step, which is why the panel was measured again when the system changed. */
+  --space-1: 3.4px;
+  --space-2: 6.8px;
+  --space-3: 10.2px;
+  --space-4: 13.6px;
+  --space-6: 20.4px;
+  --space-8: 27.2px;
+
+  /* Square, or as near as the system goes. A rounded object in here reads as
+     belonging to a different drawing. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 7px;
+
+  /* — the roles, in slate: steel as the ground, paper reversed onto it. The
+       default, so a renderer that paints before its theme has arrived paints
+       the theme most people are on. — */
+  --color-bg: #1d2d3d;
+  --color-surface: #2c455d;
+  --color-text: #f2f2f3;
+  --color-accent: #94bce3;
+  --color-divider: color-mix(in srgb, #f2f2f3 16%, transparent);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  /* The word on the one solid object the system allows. The accent is light on
+     this ground, so what sits on it is the ground itself. */
+  --on-accent: #1d2d3d;
+
+  --track: var(--color-accent-700);
+  --accent-ink: var(--color-accent-300);
+  /* Two steps off the surface, not one. The Dock's tint is the whole signal
+     that Jarvis is doing something with your voice, and the surface here is
+     itself a step of the accent ramp — at 700 the tinted card and the panel
+     behind it were the same object with a slightly different edge. */
+  --tint-fill: var(--color-accent-600);
+  --tint-edge: var(--color-accent-400);
+  --tint-text: var(--color-accent-100);
+  --tint-track: var(--color-accent-600);
+  --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --muted-strong: color-mix(in srgb, var(--color-text) 72%, transparent);
+  /* The registration marks at the corners of every framed object. */
+  --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+[data-theme='light'] {
+  --color-bg: #f2f2f3;
+  --color-surface: #e9e9ea;
+  --color-text: #1d1f20;
+  --color-accent: #5980a6;
+  --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+
+  --on-accent: #f2f2f3;
+
+  --track: var(--color-neutral-300);
+  /* The accent-to-ground pair is tuned to 3:1 — enough for icons, large text
+     and interface chrome, not for a sentence. Text in the accent takes a deep
+     step of the ramp instead. */
+  --accent-ink: var(--color-accent-700);
+  --tint-fill: var(--color-accent-100);
+  --tint-edge: var(--color-accent-400);
+  --tint-text: var(--color-accent-800);
+  --tint-track: var(--color-accent-300);
+  --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --muted-strong: color-mix(in srgb, var(--color-text) 70%, transparent);
+  --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* Iron Man — the palette Jarvis always had, carried into Industry's geometry:
+   square objects, hairline frames, gold as the single accent. */
+[data-theme='iron'] {
+  --color-accent-100: #fdf6e6;
+  --color-accent-200: #f8e8c2;
+  --color-accent-300: #f0cd7f;
+  --color-accent-400: #e9bd55;
+  --color-accent-500: #e3ae3c;
+  --color-accent-600: #b8892c;
+  --color-accent-700: #8a641f;
+  --color-accent-800: #5c4215;
+  --color-accent-900: #3a2a0d;
+  --color-neutral-100: #f4ece2;
+  --color-neutral-800: #3a2225;
+  --color-neutral-900: #1c0d10;
+
+  --color-bg: #14090b;
+  --color-surface: #241114;
+  --color-text: #f4ece2;
+  --color-accent: #e3ae3c;
+  --color-divider: color-mix(in srgb, #f4ece2 16%, transparent);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  --on-accent: #14090b;
+
+  --track: #3a2225;
+  --accent-ink: #f0cd7f;
+  --tint-fill: #3a1015;
+  --tint-edge: #7a1c22;
+  --tint-text: #f6dcae;
+  --tint-track: #5a1a1e;
+  --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --muted-strong: color-mix(in srgb, var(--color-text) 72%, transparent);
+  --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+/* Author rules beat the user agent's, so every `display` set below would
+   otherwise un-hide an element the renderer had just hidden. */
+[hidden] {
+  display: none !important;
+}
+
+a {
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+/* The browser's own focus ring is drawn in the browser's own blue, which
+   belongs to none of the three themes. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* — rules —
+   A signature kept from Nocturne, because it survived the change of system: a
+   rule fades out over its last 48px at each end rather than stopping against
+   the edge. Painted as a background, so the element it marks keeps its own
+   border free. */
+.rule-bottom {
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        var(--color-divider) 48px,
+        var(--color-divider) calc(100% - 48px),
+        transparent
+      )
+      no-repeat bottom / 100% 1px;
+}
+
+.rule-top {
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        var(--color-divider) 48px,
+        var(--color-divider) calc(100% - 48px),
+        transparent
+      )
+      no-repeat top / 100% 1px;
+}
+
+.rule-left {
+  background-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-divider) 48px,
+    var(--color-divider) calc(100% - 48px),
+    transparent
+  );
+  background-repeat: no-repeat;
+  background-position: left top;
+  background-size: 1px 100%;
+}
+
+/* — labels —
+   Every section is announced the same way: ten pixels, spaced out, upper case.
+   Condensed, now that the system's heading face is: the label is a heading in
+   everything but size. */
+.label {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+/* — the blueprint frame —
+   What every framed object in this system wears: a square hairline border and
+   a registration mark at each corner.
+   The marks are drawn as background layers rather than as four `<i class="corner">`
+   children, which is how the design system itself does it. Two reasons: it
+   keeps the mark off the markup, so a card built in JavaScript wears it by
+   naming one class; and it draws the marks *inside* the corner rather than
+   straddling it, which is what a 316-point panel has room for. */
+.blueprint,
+.card {
+  border: 1px solid var(--color-divider);
+  border-radius: 0;
+  background-color: transparent;
+  background-image:
+    linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark)), linear-gradient(var(--mark), var(--mark));
+  background-repeat: no-repeat;
+  background-size:
+    9px 1px,
+    9px 1px,
+    9px 1px,
+    9px 1px,
+    1px 9px,
+    1px 9px,
+    1px 9px,
+    1px 9px;
+  /* Four crosses, each of a 9px arm either way meeting 6px in from the corner. */
+  background-position:
+    left 2px top 6px,
+    right 2px top 6px,
+    left 2px bottom 6px,
+    right 2px bottom 6px,
+    left 6px top 2px,
+    right 6px top 2px,
+    left 6px bottom 2px,
+    right 6px bottom 2px;
+}
+
+/* A framed object that is also tinted keeps its marks: the tint is set as a
+   background *colour*, never as the `background` shorthand, which would take
+   the eight mark layers with it. */
+
+/* — buttons —
+   Outlined throughout, square, and the primary one filled. That fill is the
+   single solid object the system allows itself, and it is the reason a
+   wireframe reads as a screen rather than as a drawing of one. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--space-2) calc(var(--space-3) * 1.2);
+  border-radius: var(--radius-md);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: var(--on-accent);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  border-radius: 0;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-400);
+  border-color: var(--color-accent-400);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
+}
+
+[data-theme='light'] .btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
+}
+
+[data-theme='light'] .btn-primary:active:not(:disabled) {
+  background: var(--color-accent-700);
+  border-color: var(--color-accent-700);
+}
+
+.btn-secondary {
+  border-color: var(--color-divider);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.btn-ghost {
+  color: var(--accent-ink);
+  padding-inline: var(--space-1);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.btn-ghost:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* — forms — */
+.field > label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: var(--muted-strong);
+}
+
+.input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+}
+
+.input:hover {
+  border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+
+/* — segmented controls —
+   The chosen cell is marked by an inset ring rather than a fill: the solid
+   accent belongs to the primary button and to nothing else. */
+.seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+}
+
+.seg-opt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+}
+
+.seg-opt + .seg-opt {
+  border-left: 1px solid var(--color-divider);
+}
+
+.seg-opt[aria-checked='true'] {
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.seg-opt:not([aria-checked='true']):hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.seg-opt:focus-visible {
+  outline-offset: -2px;
+}
+
+/* — cards —
+   Line drawings, not filled blocks: a card here is a frame with marks at its
+   corners and the ground showing through it. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.card-kicker {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+/* A short mark down the left edge, instead of a coloured box: it says which
+   card wants an answer without repainting the card. */
+.card-marked {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.card-marked-quiet {
+  box-shadow: inset 3px 0 0 var(--color-accent-600);
+}
+
+.card-marked-neutral {
+  box-shadow: inset 3px 0 0 var(--color-neutral-600);
+}
+
+/* — tables —
+   The row rule is painted by the row rather than by each cell, so the fade
+   spans the whole width instead of restarting at every column. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+  padding: var(--space-2);
+  border-bottom: 1px solid transparent;
+}
+
+.table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid transparent;
+  vertical-align: middle;
+}
+
+.table thead tr {
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        var(--color-divider) 48px,
+        var(--color-divider) calc(100% - 48px),
+        transparent
+      )
+      no-repeat bottom / 100% 1px;
+}
+
+.table tbody tr {
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--color-text) 8%, transparent) 48px,
+        color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 48px),
+        transparent
+      )
+      no-repeat bottom / 100% 1px;
+}
+
+/* — bars — */
+.bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 0;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.bar-fill {
+  width: 0;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.25s linear;
+}
+
+.bar-time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* — motion —
+   Two only, and both mean "still going": the waveform while the microphone is
+   open, and a soft pulse for anything with no number to show yet. */
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes softpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}

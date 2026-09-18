@@ -1,0 +1,9 @@
+{
+ "session_id": "72585801-7fc5-4ae7-b806-e42f2a9ab670",
+ "transcript_path": "/Users/you/.claude/projects/-Users-you-Downloads-Jarvis/72585801-7fc5-4ae7-b806-e42f2a9ab670.jsonl",
+ "cwd": "/Users/you/Downloads/Jarvis",
+ "prompt_id": "3c8b4f0d-8f4c-4d39-a1f8-def1009fec6c",
+ "permission_mode": "auto",
+ "hook_event_name": "UserPromptSubmit",
+ "prompt": "diga apenas: ok"
+}

@@ -1,0 +1,37 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+body.dimmed {
+  opacity: 0.55;
+}
+
+/* The same margin on all four sides. It used to be 11.2 over 16.8, which read
+   as a pane hung from a header; with the header gone there is nothing for the
+   top to be tighter against. */
+.term-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6);
+}
+
+/* Nothing of its own around it — see the frame above, and the note in the page. */
+#terminal {
+  flex: 1;
+  min-height: 0;
+}
+
+.xterm .xterm-viewport {
+  /* The default scrollbar sits over the last column and clips glyphs. */
+  scrollbar-width: thin;
+}

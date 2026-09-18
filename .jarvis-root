@@ -1,0 +1,4 @@
+{
+  "jarvis": "folder-root",
+  "note": "Jarvis walks up from wherever it is running until it finds this file, and reads that folder as its root. Resources, Brain and .jarvis-data are located from here. Do not delete it."
+}

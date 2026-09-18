@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>Jarvis</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <!-- Which side the panel is on, and whether it is shut, are attributes rather
+       than classes: everything in the stylesheet that changes with them reads
+       off these two, and the main process is the one that decides them. -->
+  <body data-position="right" data-axis="side" data-collapsed="false">
+    <!-- Shut, the panel is this and nothing else: 52 points of the things that
+         still have to be reachable. Every button here says its name in `title`,
+         since none of them has a word beside it. -->
+    <div class="shut" id="bar" hidden>
+      <button id="bar-open" class="shut-btn" type="button" title="Open the panel">
+        <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+        <span class="sr-only">Open the panel</span>
+      </button>
+      <button id="bar-session" class="shut-btn" type="button" title="New session…">
+        <i class="ph ph-folder-open" aria-hidden="true"></i>
+        <span class="sr-only">New session</span>
+      </button>
+      <button id="bar-commands" class="shut-btn" type="button" title="Commands">
+        <i class="ph ph-command" aria-hidden="true"></i>
+        <span class="sr-only">Commands</span>
+      </button>
+      <button id="bar-skills" class="shut-btn" type="button" title="Skills">
+        <i class="ph ph-lightning" aria-hidden="true"></i>
+        <span class="sr-only">Skills</span>
+      </button>
+      <!-- The one filled block in the window, and only here: on a 52-point bar
+           the microphone has no word to carry it, and it is the thing the whole
+           app is for. It starts and ends the dictation, exactly like Speak. -->
+      <button id="bar-mic" class="shut-btn shut-mic" type="button" title="Speak">
+        <i class="ph ph-microphone" aria-hidden="true"></i>
+        <span class="sr-only">Speak</span>
+      </button>
+      <!-- The reading, in the three controls the dock carries: hold it, hear it
+           again, end it. They were the one group the shut bar left behind, and
+           a reading is exactly what you sit through with the panel out of the
+           way. Unpressable while nothing is being read, like Copy below. -->
+      <button id="bar-pause" class="shut-btn" type="button" title="pause">
+        <i class="ph ph-pause" aria-hidden="true"></i>
+        <span class="sr-only" id="bar-pause-label">pause</span>
+      </button>
+      <button id="bar-repeat" class="shut-btn" type="button" title="again">
+        <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+        <span class="sr-only">Read that again</span>
+      </button>
+      <button id="bar-stop" class="shut-btn" type="button" title="stop">
+        <i class="ph ph-stop" aria-hidden="true"></i>
+        <span class="sr-only">Stop reading</span>
+      </button>
+      <button id="bar-copy" class="shut-btn" type="button" title="Copy the last answer">
+        <i class="ph ph-copy" aria-hidden="true"></i>
+        <span class="sr-only">Copy the last answer</span>
+      </button>
+      <button id="bar-paste" class="shut-btn" type="button" title="Paste into the terminal">
+        <i class="ph ph-clipboard" aria-hidden="true"></i>
+        <span class="sr-only">Paste into the terminal</span>
+      </button>
+      <button id="bar-folder" class="shut-btn" type="button" title="Open the project folder">
+        <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+        <span class="sr-only">Open the project folder</span>
+      </button>
+      <button id="bar-settings" class="shut-btn" type="button" title="Settings">
+        <i class="ph ph-gear-six" aria-hidden="true"></i>
+        <span class="sr-only">Settings</span>
+      </button>
+      <button id="bar-move" class="shut-btn shut-move" type="button">
+        <i class="ph ph-caret-double-down" aria-hidden="true"></i>
+        <span class="sr-only" id="bar-move-label">Move the panel</span>
+      </button>
+    </div>
+
+    <!-- The divide from the terminal is also the handle: the panel is dragged
+         from whichever of its edges faces the terminal. -->
+    <div
+      class="grip"
+      id="grip"
+      title="Drag to resize the panel"
+      role="separator"
+      aria-label="Resize the panel"
+    >
+      <span class="grip-bar" aria-hidden="true"></span>
+    </div>
+
+    <div class="panel" id="panel">
+      <!-- The head of the panel. Down a side it is the strip and nothing else,
+           one line: what is open, how it is doing, and the three things that can
+           be done to it — what used to be a header over the terminal is these
+           two marks after the name. Along an edge the Session pair joins it
+           underneath, so the first column of a band is everything about the
+           session and the rest of the band is what you press. panel.js is what
+           moves that block between here and the page. -->
+      <div class="head" id="head">
+        <div class="strip">
+          <button id="collapse" class="icon-btn icon-btn-quiet" type="button" title="Shut the panel">
+            <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+            <span class="sr-only">Shut the panel</span>
+          </button>
+          <i class="ph ph-folder strip-glyph" id="project-where" aria-hidden="true"></i>
+          <span class="strip-name" id="project-name">No session</span>
+          <i class="ph ph-terminal-window strip-live" id="live" title="A shell is open here" hidden></i>
+          <span class="strip-hooks" id="hooks" title="Claude Code reports to Jarvis" hidden>
+            <span class="dot" aria-hidden="true"></span>
+          </span>
+          <button id="open-session" class="icon-btn" type="button" title="New session…">
+            <i class="ph ph-folder-open" aria-hidden="true"></i>
+            <span class="sr-only">New session</span>
+          </button>
+          <button id="reopen-project" class="icon-btn" type="button" hidden>
+            <i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>
+            <span class="sr-only" id="reopen-label">Reopen the last project</span>
+          </button>
+          <button id="end-session" class="icon-btn" type="button" title="End session">
+            <i class="ph ph-x" aria-hidden="true"></i>
+            <span class="sr-only">End session</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- What scrolls: the buttons the hand goes to, then the settings and the
+           notices behind them. -->
+      <div class="body" id="body">
+        <section>
+          <div class="label">Commands</div>
+          <div class="commands" id="shortcuts"></div>
+        </section>
+
+        <section id="skills-section" hidden>
+          <div class="label">Skills</div>
+          <div class="commands" id="skills"></div>
+        </section>
+
+        <!-- Two switches that outlast a session, as two buttons rather than two
+             rows of prose. The whole sentence is in `title`; the face of the
+             button is a glyph and a word, so the pair survives a band. -->
+        <section id="session-section">
+          <div class="label">Session</div>
+          <div class="switches">
+            <button
+              id="memory-toggle"
+              class="switch"
+              type="button"
+              aria-pressed="false"
+              title="Use the last 3 chats as memory"
+              aria-label="Use the last 3 chats as memory"
+            >
+              <i class="ph ph-chats" aria-hidden="true"></i>
+              <span class="switch-word">Memory</span>
+            </button>
+            <button
+              id="auto-read"
+              class="switch"
+              type="button"
+              aria-pressed="true"
+              title="Read Claude Code's answers aloud"
+              aria-label="Read Claude Code's answers aloud"
+            >
+              <i class="ph ph-speaker-high" aria-hidden="true"></i>
+              <span class="switch-word">Read aloud</span>
+            </button>
+          </div>
+          <p class="hint">The catch-up is typed when Claude Code opens. Enter stays yours.</p>
+        </section>
+
+        <section id="downloading" hidden>
+          <div class="label">Downloading</div>
+          <div class="row-bar">
+            <div class="bar"><div class="bar-fill bar-fill-quiet" id="download-fill"></div></div>
+            <span class="bar-time" id="download-label"></span>
+          </div>
+          <p class="hint">The speech model, once. Nothing you say leaves the machine.</p>
+        </section>
+
+        <!-- The last few answers. Click one to hear it again; a deferred one is
+             read for the first time. -->
+        <section id="recent-readings" hidden>
+          <div class="label">Recent readings</div>
+          <ul class="reading-history" id="reading-history"></ul>
+        </section>
+
+        <section id="notices" hidden>
+          <div class="label">Notices</div>
+          <div class="notice-list" id="notice-list"></div>
+        </section>
+      </div>
+
+      <!-- The dock. The microphone and the reading controls are the two things
+           that must never scroll away, so they do not sit in the page at all —
+           and what Claude Code is waiting on lands directly above them. -->
+      <div class="dock-band">
+        <section id="asked" hidden>
+          <div class="card card-asked">
+            <div class="asked-command">
+              <i class="ph ph-hand-palm" aria-hidden="true"></i><span id="permission"></span>
+            </div>
+            <div class="asked-why">
+              Claude Code is waiting. Answer it in the terminal — the keyboard only.
+            </div>
+          </div>
+        </section>
+
+        <!-- Three groups, one to a line: the microphone, the reading, and what
+             the answer in front of you can be used for. -->
+        <div class="dock blueprint" id="dock">
+          <div class="dock-mic">
+            <div class="dock-head">
+              <div class="label">Voice</div>
+              <span class="state-hint" id="dock-state">Ready to listen</span>
+            </div>
+            <!-- The sign that Jarvis is listening sits beside the two buttons
+                 that end the listening, which is where the hand already is.
+                 Six bars, and the stagger between them is in the stylesheet:
+                 see the note beside .wave in panel.css. -->
+            <div class="dock-speak">
+              <div class="dock-actions" id="speak-actions"></div>
+              <div class="wave" id="wave" aria-hidden="true" hidden>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+            <p class="dock-note" id="speak-note" hidden></p>
+          </div>
+
+          <div class="dock-rest">
+            <div class="dock-play rule-top">
+              <button id="pause-speech" class="icon-btn icon-btn-bare" type="button" title="pause">
+                <i class="ph ph-pause" aria-hidden="true"></i>
+                <span class="sr-only" id="pause-label">pause</span>
+              </button>
+              <div class="bar"><div class="bar-fill" id="reading-fill"></div></div>
+              <span class="bar-time" id="reading-label">—</span>
+              <button id="repeat" class="icon-btn icon-btn-bare" type="button" title="again">
+                <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+                <span class="sr-only">Read that again</span>
+              </button>
+              <button
+                id="stop-speech"
+                class="icon-btn icon-btn-bare icon-btn-quiet"
+                type="button"
+                title="stop"
+              >
+                <i class="ph ph-stop" aria-hidden="true"></i>
+                <span class="sr-only">Stop reading</span>
+              </button>
+            </div>
+
+            <!-- Not about the reading at all: the answer onto the clipboard, the
+                 clipboard into the input line, and the project's own folder.
+                 Each answers by turning into a tick for a moment. -->
+            <div class="dock-edit rule-top" id="dock-edit">
+              <button id="copy-answer" class="edit-btn" type="button" title="Copy the last answer">
+                <i class="ph ph-copy" aria-hidden="true"></i>
+                <span class="edit-word">Copy</span>
+              </button>
+              <button
+                id="paste-terminal"
+                class="edit-btn"
+                type="button"
+                title="Paste into the terminal"
+              >
+                <i class="ph ph-clipboard" aria-hidden="true"></i>
+                <span class="edit-word">Paste</span>
+              </button>
+              <button
+                id="open-folder"
+                class="edit-btn"
+                type="button"
+                title="Open the project folder"
+              >
+                <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+                <span class="edit-word">Folder</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- The mark is gone from here. The native title bar above already carries
+           the icon and the word, and that is the room the mover is spending. -->
+      <footer class="foot">
+        <button id="settings" class="btn btn-ghost" type="button" title="Settings">
+          <i class="ph ph-gear-six" aria-hidden="true"></i><span class="foot-word">Settings</span>
+        </button>
+
+        <button id="move-panel" class="icon-btn icon-btn-quiet" type="button">
+          <i class="ph ph-caret-double-down" aria-hidden="true"></i>
+          <span class="sr-only" id="move-label">Move the panel</span>
+        </button>
+
+        <div class="seg seg-icons" id="theme" role="radiogroup" aria-label="Theme">
+          <button class="seg-opt" type="button" role="radio" data-theme-name="dark" title="Dark">
+            <i class="ph ph-moon" aria-hidden="true"></i><span class="sr-only">Dark</span>
+          </button>
+          <button class="seg-opt" type="button" role="radio" data-theme-name="light" title="Light">
+            <i class="ph ph-sun" aria-hidden="true"></i><span class="sr-only">Light</span>
+          </button>
+          <button class="seg-opt" type="button" role="radio" data-theme-name="iron" title="Iron Man">
+            <i class="ph ph-shield-star" aria-hidden="true"></i><span class="sr-only">Iron Man</span>
+          </button>
+        </div>
+
+        <div class="seg" id="language" role="radiogroup" aria-label="Language">
+          <button class="seg-opt seg-opt-tight" type="button" role="radio" data-language="PT">
+            PT
+          </button>
+          <button class="seg-opt seg-opt-tight" type="button" role="radio" data-language="EN">
+            EN
+          </button>
+        </div>
+      </footer>
+    </div>
+    <script src="panel.js"></script>
+  </body>
+</html>

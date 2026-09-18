@@ -1,0 +1,14 @@
+# The repository stores text as LF. The working tree gets LF on every platform,
+# except the files Windows itself runs, which need CRLF to be read correctly.
+* text=auto eol=lf
+
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+*.png   binary
+*.ico   binary
+*.svg   text eol=lf
+*.woff2 binary
+*.onnx  binary
+*.wav   binary

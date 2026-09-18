@@ -1,0 +1,39 @@
+{
+  "name": "jarvis",
+  "version": "0.1.0",
+  "description": "A voice assistant for Claude Code sessions, on Windows and macOS",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "test": "node scripts/test.js",
+    "test:watch": "node scripts/test.js --watch",
+    "postinstall": "node scripts/after-install.js && node scripts/native-binaries.js",
+    "native-binaries": "node scripts/native-binaries.js",
+    "runtime": "node scripts/platform-runtime.js",
+    "fetch-assets": "node scripts/fetch-assets.js",
+    "assemble": "node scripts/assemble.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@phosphor-icons/web": "^2.1.2",
+    "electron": "^44.0.0",
+    "vitest": "^4.1.11"
+  },
+  "allowScripts": {
+    "electron": true,
+    "esbuild": true,
+    "node-pty": true,
+    "onnxruntime-node": true,
+    "sharp": true,
+    "protobufjs": true,
+    "sherpa-onnx-node": true
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
+    "sherpa-onnx-node": "^1.13.7"
+  }
+}

@@ -1,0 +1,1073 @@
+/* The panel: 316 points down a side of the window, or a 148-point band along
+ * one of its edges, and 52 points of icons when it is shut.
+ *
+ * Four bands, in the order the hand reaches for them. The session sits on one
+ * line at the top. The buttons — commands, then skills — and the settings and
+ * notices behind them scroll in the middle. The microphone and the reading
+ * controls are docked out of the scrolling page: they are what the panel is
+ * for, so a growing list of skills must never push them off screen. Nothing is
+ * behind a disclosure, because a voice assistant you have to open a drawer to
+ * read is not telling you anything.
+ *
+ * Two attributes on <body> carry everything that changes: `data-axis`, which is
+ * `side` or `band` and decides which measure is the scarce one, and
+ * `data-position`, which only ever flips a direction. Where something is hidden
+ * or reflowed in a band, it is because a real measurement said so — the panel
+ * reports its own length and the edit row its own width, and there is not a
+ * fixed breakpoint anywhere in this file.
+ */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  background-color: var(--color-surface);
+  user-select: none;
+  overflow: hidden;
+}
+
+/* The grip comes first in the source and the panel second, so each position is
+   one direction: the panel ends up against its own edge of the window and the
+   grip ends up against the terminal, which is the line you would aim at. */
+body[data-position='right'] {
+  flex-direction: row;
+}
+
+body[data-position='left'] {
+  flex-direction: row-reverse;
+}
+
+body[data-position='bottom'] {
+  flex-direction: column;
+}
+
+body[data-position='top'] {
+  flex-direction: column-reverse;
+}
+
+/* --- Shut ---------------------------------------------------------------- */
+
+/* 52 points, and only what still has to be reachable. The panel and its handle
+   are not narrowed down to this — they are out, and this is in. */
+body[data-collapsed='true'] > .grip,
+body[data-collapsed='true'] > .panel {
+  display: none;
+}
+
+/* Named `.shut` and not `.bar`, which theme.css already spends on the 4-point
+   progress bar. The two collided in silence: a rule this file never writes —
+   `height: 4px` — reached the whole column and cut it down to its own padding,
+   with the overflow hiding every button but the top of the first. */
+.shut {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* 5.6 and not 8.4: the microphone is 36 across, and at the wider step it and
+     its padding came to 52.8 inside 52 — one point over, which on a bar this
+     narrow is a glyph with its edge shaved off. */
+  padding: var(--space-2);
+  overflow: hidden;
+}
+
+body[data-axis='side'] .shut {
+  flex-direction: column;
+}
+
+body[data-axis='band'] .shut {
+  flex-direction: row;
+}
+
+.shut-btn {
+  /* Thirteen icons want 499 points down a side and the window is allowed to be
+     420 tall, so they give way together rather than the last of them being cut
+     off: each keeps its 30 points wherever there is room and loses a little of
+     its height where there is not. No breakpoint decides it — the shortfall is
+     divided by the same flex that laid the column out. */
+  flex: 0 1 auto;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+}
+
+.shut-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+
+.shut-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The solid accent object, in miniature. Industry allows exactly one — the
+   primary button — and this is the same control wearing the same paint: on a
+   52-point bar the microphone has no word to carry it, and it is the thing the
+   whole app is for. It takes `--on-accent` rather than a fixed ink, because the
+   accent is light on slate and dark on paper. */
+.shut-mic {
+  width: 36px;
+  height: 44px;
+  /* It gives way too, but last and least: 8 points of the 44 and no further, so
+     the one filled block on the bar is still the tallest thing on it. */
+  min-height: 36px;
+  border-radius: 0;
+  color: var(--on-accent);
+  background: var(--color-accent);
+}
+
+.shut-mic:hover:not(:disabled) {
+  background: var(--color-accent-400);
+}
+
+[data-theme='light'] .shut-mic:hover:not(:disabled) {
+  background: var(--color-accent-600);
+}
+
+/* Listening, it is the same button doing the opposite thing, and it says so. */
+.shut-mic.listening {
+  background: var(--color-accent-700);
+}
+
+/* Pushed to the end of the bar, so the mover is where the footer would put
+   it — last, and away from everything pressed by accident. */
+.shut-move {
+  margin-top: auto;
+}
+
+body[data-axis='band'] .shut-move {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+/* --- The handle ---------------------------------------------------------- */
+
+/* The divide from the terminal is a rule that fades out at both ends, not a
+   border: a hard line all the way across would read as two windows again. It is
+   also the resize handle, so the line you would aim at to judge the measure is
+   the line you grab. */
+.grip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body[data-axis='side'] .grip {
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+body[data-axis='band'] .grip {
+  width: 100%;
+  height: 5px;
+  cursor: row-resize;
+}
+
+.grip-bar {
+  border-radius: 1px;
+  background: var(--color-divider);
+}
+
+body[data-axis='side'] .grip-bar {
+  width: 2px;
+  height: 26px;
+}
+
+body[data-axis='band'] .grip-bar {
+  width: 26px;
+  height: 2px;
+}
+
+.grip:hover .grip-bar {
+  background: var(--color-accent);
+}
+
+/* --- The panel itself ---------------------------------------------------- */
+
+.panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+body[data-axis='side'] .panel {
+  flex-direction: column;
+}
+
+body[data-axis='band'] .panel {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* --- The head ------------------------------------------------------------ */
+
+/* Down a side it holds the strip and nothing else. Along an edge the Session
+   pair joins it, and the two stack into the band's first column. */
+.head {
+  flex: none;
+  min-width: 0;
+}
+
+body[data-axis='band'] .head {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+}
+
+body[data-axis='band'] .head .strip {
+  padding: 0;
+}
+
+/* --- The session strip --------------------------------------------------- */
+
+/* One line, and never more: the project's name, how it is doing, and the three
+   things that can be done to it. The two marks after the name are what the
+   terminal's own header used to say, moved up over the thing that names it. */
+.strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6) var(--space-3);
+}
+
+body[data-axis='band'] .strip {
+  padding: 0;
+}
+
+.strip-glyph {
+  flex: none;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.strip-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A band has nowhere to put the name; the folder glyph carries it as a tooltip
+   and the four buttons keep their full 26 points. */
+body[data-axis='band'] .strip-name {
+  display: none;
+}
+
+.strip-live {
+  flex: none;
+  font-size: 14px;
+  color: var(--color-accent);
+}
+
+.strip-hooks {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.strip-hooks .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent-600);
+}
+
+.icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.icon-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The reading controls: no outline, because boxes in a row beside the position
+   bar read as a second set of commands. */
+.icon-btn-bare {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  border-color: transparent;
+  color: var(--color-accent);
+}
+
+.icon-btn-bare:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.icon-btn-quiet {
+  color: var(--muted-strong);
+}
+
+/* --- What scrolls -------------------------------------------------------- */
+
+.body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+}
+
+body[data-axis='side'] .body {
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-6) var(--space-6);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* The blocks sit on the middle line of the band rather than against its top, and
+   they ask for the width they need rather than for whatever is left over —
+   which is what lets the dock beside them be the thing that yields. Below the
+   width they all need, the row scrolls sideways rather than clipping: a button
+   you can reach by scrolling is a button; one drawn past the edge is not. */
+body[data-axis='band'] .body {
+  flex: 1 1 auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+body[data-axis='band'] section {
+  flex: none;
+}
+
+/* --- Commands -----------------------------------------------------------
+   Down a side the grid answers to width: one track per 72 points, so a panel
+   dragged wider gains a column rather than stretching the buttons it has.
+   Along an edge the scarce measure is height, so the same buttons flow down
+   three rows and extend sideways — never a row more than the band can show. */
+
+.commands {
+  display: grid;
+  gap: var(--space-2);
+}
+
+body[data-axis='side'] .commands {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
+
+body[data-axis='band'] .commands {
+  grid-template-rows: repeat(3, minmax(0, 24px));
+  grid-auto-flow: column;
+  /* Fixed, so a command in a wide window is the size of a skill. */
+  grid-auto-columns: 78px;
+}
+
+body[data-axis='band'] #skills {
+  /* Three skills, one column of full labels: "code-review" is never cut. */
+  grid-auto-columns: 84px;
+}
+
+.commands .btn {
+  font-size: 12px;
+  padding: 7px 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+body[data-axis='band'] .commands .btn {
+  padding: 2px 4px;
+  font-size: 11px;
+}
+
+.commands .btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Session ------------------------------------------------------------
+   The two switches that outlast a session: what a new one is told, and whether
+   answers are read aloud. Two buttons rather than two rows of prose, so the
+   pair still reads when the words have to go. */
+
+.switches {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.switch {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.switch > .ph {
+  flex: none;
+  font-size: 14px;
+}
+
+.switch-word {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switch:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+/* On is the accent drawn as a line around the tint, which is how this system
+   marks a chosen cell everywhere else; off is an ordinary outlined button. The
+   tint alone was not enough: on paper it is one step off the surface, and the
+   two switches side by side read as the same control twice. */
+.switch[aria-pressed='true'] {
+  color: var(--accent-ink);
+  background-color: var(--tint-fill);
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.switch[aria-pressed='true']:hover {
+  background-color: var(--tint-track);
+}
+
+/* In a band the glyph carries it and the sentence stays in `title`. */
+body[data-axis='band'] .switch-word,
+body[data-axis='band'] #session-section .hint {
+  display: none;
+}
+
+body[data-axis='band'] .switch {
+  flex: none;
+  width: 32px;
+  padding: 0;
+}
+
+/* --- Recent readings ----------------------------------------------------- */
+
+.reading-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reading-history .history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reading-history .history-item:hover {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.reading-history .history-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Along an edge the readings keep their column, three of them on the same
+   three-row rhythm as the commands beside them and at a fixed width — so the
+   line is cut at the same place every time rather than stretching the row. */
+body[data-axis='band'] .reading-history {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 24px));
+  grid-auto-flow: column;
+  grid-auto-columns: 196px;
+  gap: var(--space-2);
+}
+
+body[data-axis='band'] .reading-history .history-item {
+  height: 100%;
+  padding: 2px 6px;
+}
+
+/* --- Notices ------------------------------------------------------------- */
+
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.notice-title {
+  font-size: 12px;
+  color: var(--accent-ink);
+}
+
+.notice-list .card-marked-neutral .notice-title {
+  color: var(--muted-strong);
+}
+
+.notice-body {
+  font-size: 12px;
+  color: var(--muted-strong);
+  user-select: text;
+}
+
+.notice-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.notice-actions .btn {
+  font-size: 12px;
+  padding: 4px 9px;
+}
+
+/* Along an edge a notice is the one block that is prose, and a band has no page
+   to lay prose on. So the card turns on its side: the words take a column of
+   fixed width and the buttons stand beside them rather than under them, which
+   is what makes it the height of the button rows next to it. A second notice
+   stands beside the first, and the row scrolls to it. */
+body[data-axis='band'] #notices {
+  max-height: 100%;
+  min-height: 0;
+}
+
+body[data-axis='band'] .notice-list {
+  flex-direction: row;
+  align-items: center;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+}
+
+body[data-axis='band'] .notice-list .card {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  width: 300px;
+  padding: var(--space-2) var(--space-3);
+}
+
+body[data-axis='band'] .notice-list .card > * {
+  grid-column: 1;
+}
+
+body[data-axis='band'] .notice-list .notice-actions {
+  grid-column: 2;
+  grid-row: 1 / -1;
+}
+
+/* The download's sentence is prose too, and it wraps rather than stretching the
+   row out from under everything beside it. */
+body[data-axis='band'] #downloading {
+  width: 220px;
+}
+
+.row-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Nothing to measure yet, so the bar breathes rather than inventing a number. */
+.bar-fill.waiting {
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+.bar-fill-quiet {
+  background: var(--color-accent-600);
+}
+
+.hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- The dock -----------------------------------------------------------
+   Out of the scrolling page, so the microphone and the reading controls are
+   always in the same place. */
+
+.dock-band {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) var(--space-3);
+}
+
+/* The dock is still the first thing to give way when a band runs short, and the
+   shrink factor is large on purpose: flex divides a shortfall in proportion to
+   what each item asked for, so weighted this far the dock spends its own points
+   before a button loses one.
+   What changed is how many points it has. The floor was 296 — what Play and Edit
+   come to side by side — from when the blocks beside it were two grids of
+   buttons that stopped at a known width. The row carries prose now, the
+   readings and the notices, so the shortfall has no ceiling, and at 296 the
+   microphone is nought points wide: the one button the whole app is for, spent
+   on a paragraph. The floor is the width that still draws it. Past that the row
+   is the thing that gives, by scrolling — Commands stays where it always is and
+   what leaves the screen is the prose at the far end of it. */
+body[data-axis='band'] .dock-band {
+  flex: 0 30 420px;
+  min-width: 400px;
+  justify-content: center;
+  padding: var(--space-3) var(--space-3);
+}
+
+.dock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+body[data-axis='band'] .dock {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.dock-mic {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+body[data-axis='band'] .dock-mic {
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.dock-rest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Play and Edit share one line in a band: there is no height to stack them in,
+   and the group labels go with the stacking. */
+body[data-axis='band'] .dock-rest {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Tinted while Jarvis is doing something with your voice, plain while it is
+   waiting for you. The tint is the whole signal — no badge, no colour-coded
+   dot, nothing to learn. */
+.dock.tinted {
+  /* A colour and not the `background` shorthand: the shorthand would take the
+     eight layers that draw the corner marks with it. */
+  background-color: var(--tint-fill);
+  border-color: var(--tint-edge);
+}
+
+.dock-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+body[data-axis='band'] .dock-head .label {
+  display: none;
+}
+
+/* The small state line beside the label — "Ready to listen", "Reading the
+   answer" — takes the middle so the waveform sits at the far right. */
+.state-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock.tinted .state-hint {
+  color: var(--tint-text);
+}
+
+.wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+
+.wave span {
+  width: 3px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  animation: wave 900ms ease-in-out infinite;
+}
+
+/* Beside the buttons that end the listening, cut to the height of the row they
+   share rather than to the label line it used to sit on. */
+.dock-speak {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dock-speak .dock-actions {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Nothing to show while the microphone is shut, and an empty box would still
+   take its gap out of the row. */
+.wave[hidden] {
+  display: none;
+}
+
+/* The stagger lives here rather than on each bar: a style attribute is inline
+   style, and this renderer runs under `default-src 'self'` — the delays were
+   silently refused and every bar rose and fell together. */
+.wave span:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.wave span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.wave span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.wave span:nth-child(4) {
+  animation-delay: 60ms;
+}
+
+.wave span:nth-child(5) {
+  animation-delay: 300ms;
+}
+
+.wave span:nth-child(6) {
+  animation-delay: 180ms;
+}
+
+/* Tall enough to read as the thing the panel is for, even while it cannot be
+   pressed. */
+.dock-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* While the recogniser is working there is nothing to press, and an empty row
+   would still take its gap out of the dock. */
+.dock-actions:empty {
+  display: none;
+}
+
+.dock-actions > .btn {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+}
+
+/* Cancel takes only the room its word needs; Finish keeps the rest. */
+.dock-actions > .btn-secondary {
+  flex: none;
+  padding-inline: calc(var(--space-3) * 1.4);
+}
+
+/* Speak stops stretching in a band and stands at its own width instead: past
+   300 points a button the length of the window reads as a banner. */
+body[data-axis='band'] .dock-actions {
+  justify-content: center;
+}
+
+body[data-axis='band'] .dock-actions > .btn {
+  flex: 0 1 auto;
+  max-width: 300px;
+  height: 36px;
+}
+
+.dock-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dock.tinted .dock-note {
+  color: var(--tint-text);
+}
+
+/* The promise about Enter is a sentence, and a band has no room for one. The
+   promise itself is unchanged — only the place it is written down. */
+body[data-axis='band'] .dock-note {
+  display: none;
+}
+
+.dock-play,
+.dock-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+}
+
+/* The rule between the groups is a horizontal one. Side by side there is
+   nothing for it to separate, so it goes rather than being turned on its
+   side. */
+body[data-axis='band'] .dock-play,
+body[data-axis='band'] .dock-edit {
+  padding-top: 0;
+  background: none;
+}
+
+/* Measured, not shrink-to-fit: the numbers change every quarter second, and a
+   column that resizes with them drags the controls beside it along. */
+.dock-play .bar-time {
+  min-width: 46px;
+  text-align: right;
+  color: var(--muted);
+}
+
+.dock.tinted .bar {
+  background: var(--tint-track);
+}
+
+.dock.tinted .bar-time {
+  color: var(--tint-text);
+}
+
+/* --- Edit ---------------------------------------------------------------- */
+
+/* Copy, Paste and the project's folder. Down a side the labels are guaranteed
+   by construction — the panel is never narrower than 316 — so only a band ever
+   sees the squares. */
+.edit-btn {
+  flex: 1;
+  min-width: 0;
+  max-width: 148px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.edit-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.edit-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.edit-btn > .ph {
+  flex: none;
+  font-size: 14px;
+}
+
+.edit-word {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Below the width all three labels need, they are squares with the glyph alone.
+   The row reports its own width — see `EDIT_LABELS_NEED` and `measure()` in
+   panel.js — so this is a measurement and not a guess about the window. */
+body[data-edit='tight'] .edit-word {
+  display: none;
+}
+
+body[data-edit='tight'] .edit-btn {
+  flex: none;
+  width: 28px;
+  padding: 0;
+}
+
+/* --- Asked of you ------------------------------------------------------ */
+
+/* Above the dock rather than in the scrolling page: it is the one thing that
+   stops the session, so it cannot be somewhere you have to scroll to find. */
+.card-asked {
+  background-color: var(--tint-fill);
+  border-color: var(--tint-edge);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.asked-command {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-ink);
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.asked-why {
+  font-size: 12px;
+  color: var(--tint-text);
+}
+
+/* A permission request is two lines of prose. In a band it would take the dock's
+   whole height, so it keeps the command and drops the explanation. */
+body[data-axis='band'] .asked-why {
+  display: none;
+}
+
+/* --- Footer ------------------------------------------------------------- */
+
+.foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4.2px;
+  padding: var(--space-3) var(--space-6) var(--space-4);
+}
+
+/* Nothing down here shrinks. A .seg hides its overflow, so letting flex squeeze
+   one would quietly cut a letter off PT or clip a theme icon — a control that
+   is wrong rather than a layout that is visibly wrong, which is worse. The room
+   is measured to be there instead: see the segment padding below. */
+.foot > * {
+  flex: none;
+}
+
+.foot #settings {
+  margin-right: auto;
+  font-size: 13px;
+}
+
+/* A band's footer is two lines with a ceiling, and Settings keeps its glyph and
+   loses its word. PT and EN stay: the Settings sheet has no language control to
+   send them to, and a language you cannot reach is worse than a tight row. */
+/* 156 and not the 140 the handoff asked for.
+   Measured under Industry: Settings without its word is 22, the mover 26 and
+   the three themes 79, which with their gaps is 133.8 of content — and the
+   ceiling is on the box, so the footer's own 20.4 of padding comes out of it
+   first. Anything under 155 drops the themes to a line of their own and the
+   footer takes three lines rather than two. */
+body[data-axis='band'] .foot {
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  max-width: 156px;
+  padding: var(--space-3);
+}
+
+body[data-axis='band'] .foot #settings {
+  margin-right: 0;
+}
+
+body[data-axis='band'] .foot-word {
+  display: none;
+}
+
+/* Tighter than the system default, and measured rather than guessed: at stock
+   padding the mark, Settings, three themes and two languages came to 283px
+   inside a 282px footer — one pixel over, with no way for it to show. The mark
+   is gone now, and the mover is spending exactly the room it left. */
+.seg-icons .seg-opt {
+  padding: 5px 6px;
+  font-size: 13px;
+}
+
+.seg-opt-tight {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
