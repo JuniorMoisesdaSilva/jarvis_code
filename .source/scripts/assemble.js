@@ -241,6 +241,7 @@ packager({
       }
     }
     if (!everyDependencyLanded(built)) return
+    if (!everyFrameworkLanded(built)) return
     console.log(`\n  ${COMPARTMENT}/ assembled — ${path.relative(folderRoot, built)}`)
     console.log('  The voices and the listening model stay in Resources/ and are read from there.\n')
   })
@@ -316,6 +317,59 @@ function everyDependencyLanded(built) {
       `    ${missing.join(', ')}\n` +
       '  Dictation or speech would fail at first use on something they cannot find.\n' +
       '  Check what MUST_BE_ON_DISK unpacks and what foreignPlatforms() throws away.\n',
+  )
+  process.exitCode = 1
+  return false
+}
+
+/**
+ * Says so if any framework the app is built on top of never reached the bundle.
+ *
+ * Nothing in this script copies them. The packager unpacks Electron into a
+ * staging folder of its own and moves the finished bundle here, and that move
+ * has been seen to arrive with `Contents/Frameworks` holding four empty folders
+ * while the build reported success. An app in that state dies at launch, before
+ * a line of its own code runs, with a crash report naming a library dyld could
+ * not find — which is the last place anyone looks after a build that said it
+ * worked.
+ *
+ * A framework keeps its binary behind two symlinks: the folder's own name,
+ * pointing through `Versions/Current` at the real file. So the cheapest honest
+ * question is whether that name leads to a file with bytes in it. An empty
+ * folder answers no. A file that is there but truncated would slip past, and is
+ * not what has been seen.
+ *
+ * Windows has no frameworks, and there the question does not arise.
+ */
+function everyFrameworkLanded(built) {
+  if (WINDOWS) return true
+  const frameworks = path.join(built, 'Contents', 'Frameworks')
+
+  let present
+  try {
+    present = fs.readdirSync(frameworks).filter((name) => name.endsWith('.framework'))
+  } catch {
+    present = []
+  }
+
+  // statSync follows both links, so this asks the real binary for its size.
+  const hollow = present.filter((name) => {
+    try {
+      return fs.statSync(path.join(frameworks, name, path.basename(name, '.framework'))).size === 0
+    } catch {
+      return true
+    }
+  })
+
+  if (present.length > 0 && hollow.length === 0) return true
+
+  const lost = present.length === 0 ? ['none of them arrived'] : hollow
+  console.error(
+    `\n  The app is missing the frameworks it runs on: ${lost.join(', ')}.\n` +
+      '  Assembled and unopenable — macOS stops it at launch, before any of its own\n' +
+      '  code runs, saying only that a library could not be found.\n' +
+      '  Assemble again: this is the packager losing them on the way out of its\n' +
+      '  staging folder, and the second run came through complete.\n',
   )
   process.exitCode = 1
   return false
