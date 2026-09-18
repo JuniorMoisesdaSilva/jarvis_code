@@ -44,11 +44,12 @@ What each step is for:
 - **`npm install`** — the dependencies, plus two repairs npm leaves undone: the
   executable bit on node-pty's `spawn-helper` on a Mac, and any compiled package
   missing because the tree was installed on the other platform.
-- **`npm run fetch-assets`** — the five voices Jarvis reads in and the Whisper
-  model it listens with, into `Resources/` at the root: about 2 GB, fetched once
-  and shared by both platforms. Skip it and Jarvis still opens and still
-  dictates — it downloads the listening model on first use — but it has no voice
-  to read the answer in, because it offers only the voices it carries.
+- **`npm run fetch-assets`** — the seven voices Jarvis reads in — five Brazilian
+  Portuguese and two American English — and the Whisper model it listens with,
+  into `Resources/` at the root: about 2 GB, fetched once and shared by both
+  platforms. Skip it and Jarvis still opens and still dictates — it downloads
+  the listening model on first use — but it has no voice to read the answer in,
+  because it offers only the voices it carries.
 - **`npm start`** — fetches Electron for this platform into `Windows/electron/`
   or `macOS/electron/` the first time, then opens the app. The runtime is kept
   per platform on purpose: `node_modules` can be one tree shared by two machines,
@@ -62,12 +63,14 @@ What each step is for:
 Two things are yours to do, once:
 
 1. **Connect Jarvis to Claude Code.** Open Settings from the rail's footer and
-   press Connect under "Claude Code". This installs the four Agent event hooks
+   press Connect under "Claude Code". This installs the five Agent event hooks
    and applies Jarvis's behaviour — the spoken-summary output style, the two-line
-   status line, and the model — into your global Claude Code configuration,
-   keeping a copy of the file first. Disconnect puts it all back the way it was.
-   It never touches your login or your permissions. Without it, Jarvis never
-   learns that an answer finished or that permission was asked for.
+   status line, and the model and language it answers in — into your global
+   Claude Code configuration, keeping a copy of the file first. Disconnect puts
+   it all back the way it was. It never touches your login or your permissions.
+   Without it, Jarvis never learns that an answer finished or that permission was
+   asked for. Out of the box it answers in Brazilian Portuguese; that, and the
+   model it sets, are the two lines in `Brain/LAYOUT.json`.
 2. **Allow the microphone.** On Windows: Settings → Privacy & security →
    Microphone, including "Let desktop apps access your microphone". On macOS the
    box appears the first time you speak; if you miss it, System Settings →
@@ -83,8 +86,8 @@ rail, disabled, and says why.
 
 ## The folder
 
-This repository **is** Jarvis. The compartments you open — `Docs`, `Brain`,
-`Resources`, `Windows`, `macOS`, `Start Here` — and two you never have to:
+This repository **is** Jarvis. The compartments you open — `Brain`, `Resources`,
+`Windows`, `macOS`, `Start Here` — and two you never have to:
 `.source`, where the code is edited exactly once for both platforms, and
 `.jarvis-data`, where Jarvis keeps what it writes.
 
