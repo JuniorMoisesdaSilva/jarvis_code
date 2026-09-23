@@ -41,15 +41,23 @@ const agent = {
  *
  * The path arrives here **already normalized** — resolving links and casing
  * touches the disk and is the adapter's job. The core compares text.
+ *
+ * `terminal` names the terminal Jarvis opened when the session runs in one of
+ * them, and is null for any other window. The folder alone cannot tell a new
+ * session in Jarvis's own terminal from a second window on the same project.
  */
-function incoming(event, workingDirectory = null) {
-  return { event, workingDirectory }
+function incoming(event, workingDirectory = null, terminal = null) {
+  return { event, workingDirectory, terminal }
 }
 
 /** Things the user does — in the Panel, on the keyboard, or at the microphone. */
 const user = {
-  /** A project was opened in the Panel. The path arrives normalized. */
-  projectOpened: (path) => ({ type: 'projectOpened', path }),
+  /**
+   * A project was opened in the Panel. The path arrives normalized; `terminal`
+   * is the name of the terminal opened for it, which is what marks the sessions
+   * started there.
+   */
+  projectOpened: (path, terminal = null) => ({ type: 'projectOpened', path, terminal }),
   projectClosed: () => ({ type: 'projectClosed' }),
   /** Reconnection to a session already running when Jarvis launched. */
   sessionRestored: (sessionId) => ({ type: 'sessionRestored', sessionId }),

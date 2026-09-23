@@ -21,6 +21,15 @@ const { typeable } = require('../core/typed-text')
  *                    the pane is gone. Passed rather than captured so the channel
  *                    follows the pane across reloads.
  */
+/**
+ * The environment with this terminal's name in it. Claude Code started here
+ * inherits it and hands it to its hooks, which is how an event says it came from
+ * this terminal and not from another window on the same folder.
+ */
+function marked(environment, terminal) {
+  return terminal === null ? environment : { ...environment, JARVIS_TERMINAL: terminal }
+}
+
 function createTerminal(getContents) {
   let shellProcess = null
   let exitHandler = null
@@ -71,7 +80,7 @@ function createTerminal(getContents) {
    * `onExit` is for the shell dying on its own — a surprise worth announcing. The
    * window closing is handled by the window, not here.
    */
-  function open({ projectPath, shell, onExit }) {
+  function open({ projectPath, shell, terminal = null, onExit }) {
     close()
     exitHandler = onExit ?? null
     pending = []
@@ -81,7 +90,7 @@ function createTerminal(getContents) {
       cols: shape.cols,
       rows: shape.rows,
       cwd: projectPath,
-      env: { ...forShell(process.env), TERM: 'xterm-256color' },
+      env: marked({ ...forShell(process.env), TERM: 'xterm-256color' }, terminal),
       useConpty: true,
       // Not cosmetic: the other path forks a helper with our own executable to
       // enumerate console processes, and under Electron that helper starts as a

@@ -72,7 +72,8 @@ function decode(json) {
   const payload = typeof json === 'string' ? JSON.parse(json) : json
   const event = agentEvent(payload)
   if (!event) return null
-  return incoming(event, payload.cwd ?? null)
+  const terminal = typeof payload.jarvis_terminal === 'string' ? payload.jarvis_terminal : null
+  return incoming(event, payload.cwd ?? null, terminal)
 }
 
 module.exports = { decode, agentEvent, significantDetail }

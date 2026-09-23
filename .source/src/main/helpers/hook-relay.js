@@ -54,8 +54,31 @@ function eventOnStandardInput() {
   }
 }
 
-const payload = eventOnStandardInput()
-if (payload.trim() === '') leave()
+/**
+ * The event, with the mark of the terminal it ran in when that is one of
+ * Jarvis's own.
+ *
+ * Claude Code says which folder a session runs in, never which window. Two
+ * sessions in the same folder look alike, so the terminal Jarvis opens puts its
+ * name in the environment, Claude Code hands the environment down to its hooks,
+ * and this is where it is read. Anything that is not a JSON object is forwarded
+ * as it came: refusing it is Jarvis's decision, not the relay's.
+ */
+function marked(event) {
+  const terminal = process.env.JARVIS_TERMINAL
+  if (!terminal) return event
+  try {
+    const parsed = JSON.parse(event)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return event
+    return JSON.stringify({ ...parsed, jarvis_terminal: terminal })
+  } catch {
+    return event
+  }
+}
+
+const received = eventOnStandardInput()
+if (received.trim() === '') leave()
+const payload = marked(received)
 
 const socket = net.connect(channelAddress(), () => {
   socket.end(payload)

@@ -40,6 +40,11 @@ function initialState(overrides = {}) {
      */
     projectPath: null,
     /**
+     * Name of the terminal Jarvis opened for that project. A session started in
+     * it is the one the user is talking to, whatever Jarvis was holding before.
+     */
+    terminal: null,
+    /**
      * Short message for the Panel — today only the end of a session. It stays
      * until dismissed, or until a new session begins.
      */
@@ -76,7 +81,29 @@ class JarvisCore {
     const { projectPath } = this.state
     if (projectPath === null) return []
     if (!samePath(incoming.workingDirectory, projectPath)) return []
+    if (this.#fromOwnTerminal(incoming)) this.#follow(incoming.event)
     return this.handleAgentEvent(incoming.event)
+  }
+
+  #fromOwnTerminal({ terminal }) {
+    return this.state.terminal !== null && terminal === this.state.terminal
+  }
+
+  /**
+   * A session in Jarvis's own terminal is the one being spoken to, even when
+   * Jarvis still holds another.
+   *
+   * A Claude Code that ends without saying so — a crash, a closed window, an
+   * update that restarts it — leaves Jarvis holding a conversation nobody is in,
+   * and the next one in the same terminal was discarded as a second window. An
+   * ending is the exception: it only ever closes the session it names.
+   */
+  #follow(event) {
+    if (event.type === 'sessionEnded') return
+    if (this.state.activeSessionId === event.sessionId) return
+    this.state.activeSessionId = event.sessionId
+    this.state.lastPermissionDetail = null
+    this.state.notice = null
   }
 
   /** The unrouted path. Callers outside the core should use `receive`. */
@@ -149,6 +176,7 @@ class JarvisCore {
     switch (event.type) {
       case 'projectOpened': {
         this.state.projectPath = event.path
+        this.state.terminal = event.terminal ?? null
         // Everything held belonged to the previous project: reading aloud the
         // answer of a project you closed is worse than not reading at all.
         this.state.activeSessionId = null

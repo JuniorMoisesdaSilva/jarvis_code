@@ -29,6 +29,9 @@ const SESSION_MARKERS = Object.freeze([
   'CLAUDE_CODE_MESSAGING_TOKEN',
   'CLAUDE_PID',
   'CLAUDE_EFFORT',
+  // Jarvis's own mark, when Jarvis itself was started from one of its terminals.
+  // The shell it opens is a different terminal and gets a name of its own.
+  'JARVIS_TERMINAL',
 ])
 
 /**

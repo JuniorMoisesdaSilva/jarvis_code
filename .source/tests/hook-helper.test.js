@@ -45,15 +45,18 @@ afterEach(() => {
 })
 
 /** The relay, started exactly as the launcher starts it. */
-function startRelay(pipe) {
+function startRelay(pipe, extra = {}) {
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', JARVIS_PIPE: pipe, ...extra }
+  // The mark of Jarvis's own terminal is only there when a test puts it there.
+  if (!('JARVIS_TERMINAL' in extra)) delete env.JARVIS_TERMINAL
   return spawn(electronBinary(), [RELAY], {
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', JARVIS_PIPE: pipe },
+    env,
     stdio: ['pipe', 'ignore', 'ignore'],
   })
 }
 
 /** One event in, whatever the pipe heard out. */
-function deliver(payload, { pipe }) {
+function deliver(payload, { pipe, env = {} }) {
   return new Promise((resolve, reject) => {
     const heard = []
     const server = net.createServer((socket) => {
@@ -71,7 +74,7 @@ function deliver(payload, { pipe }) {
 
     server.on('error', reject)
     server.listen(pipe, () => {
-      relay = startRelay(pipe)
+      relay = startRelay(pipe, env)
       relay.on('error', reject)
       relay.on('exit', () => {
         // Exited without the pipe hearing anything: that is the failure this
@@ -110,6 +113,35 @@ describe('the relay Claude Code runs', () => {
         // aloud mangled.
         last_assistant_message: 'ação, coração, não',
       })
+    },
+    40_000,
+  )
+
+  it(
+    'says which of the terminals Jarvis opened the event came from',
+    async () => {
+      // The one thing Claude Code does not say is where it is running. The
+      // terminal Jarvis opens marks its environment, and the relay passes the
+      // mark on — it is what tells Jarvis's own session from another window's.
+      const pipe = channelFor('terminal')
+      const event = JSON.stringify({ session_id: 's', cwd: String.raw`C:\x`, hook_event_name: 'Stop' })
+
+      const received = await deliver(event, { pipe, env: { JARVIS_TERMINAL: 'term-7' } })
+
+      expect(JSON.parse(received)).toMatchObject({ session_id: 's', jarvis_terminal: 'term-7' })
+    },
+    40_000,
+  )
+
+  it(
+    'forwards an event it cannot read exactly as it came',
+    async () => {
+      // Interpreting is not the relay's job. A payload that is not JSON is
+      // still Jarvis's to refuse, not the relay's to lose.
+      const pipe = channelFor('garbled')
+      const received = await deliver('not json', { pipe, env: { JARVIS_TERMINAL: 'term-7' } })
+
+      expect(received).toBe('not json')
     },
     40_000,
   )

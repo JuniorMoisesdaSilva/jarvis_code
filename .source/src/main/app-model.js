@@ -11,6 +11,7 @@
 // the `sessions` registry hands them to one Session at a time; this file asks
 // for them through the `deps` it is created with.
 
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const { clipboard, dialog, shell: systemShell } = require('electron')
@@ -510,12 +511,16 @@ function createSession({ win, deps }) {
       report('Could not create the transcript in that folder.')
     }
 
-    dispatch(user.projectOpened(normalize(projectPath)))
+    // Each shell gets a name of its own: a session started in it is recognised
+    // by it, even while Jarvis still holds one that ended without saying so.
+    const terminal = crypto.randomUUID()
+    dispatch(user.projectOpened(normalize(projectPath), terminal))
 
     try {
       term.open({
         projectPath,
         shell: stored.shell,
+        terminal,
         onExit: () => {
           forgetOpenProject()
           dispatch(user.sessionLost())
@@ -570,6 +575,11 @@ function createSession({ win, deps }) {
   /** True when this Session owns the project a hook event came from. */
   function matchesProject(workingDirectory) {
     return surface.projectPath !== null && samePath(surface.projectPath, workingDirectory)
+  }
+
+  /** True when the event came from the terminal this Session opened. */
+  function ownsTerminal(terminal) {
+    return terminal !== null && core.state.terminal === terminal
   }
 
   /** True when this Session's core has already adopted this Claude Code session. */
@@ -1005,6 +1015,7 @@ function createSession({ win, deps }) {
     // Registry-facing:
     ownsContents: (webContents) => win.ownsContents(webContents),
     matchesProject,
+    ownsTerminal,
     ownsClaudeSession,
     hasActiveSession,
     receive,

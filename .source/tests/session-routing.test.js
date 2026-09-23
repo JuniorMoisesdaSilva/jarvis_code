@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { JarvisCore } from '../src/core/jarvis-core.js'
 import { agent, user, incoming } from '../src/core/events.js'
+import { decode } from '../src/core/hook-payload.js'
 import { hasEffect } from './helpers.js'
 
 // Jarvis's hooks are global: every Claude Code session on the machine sends
@@ -20,8 +21,8 @@ function coreWithProjectOpen() {
   return core
 }
 
-function arriving(event, path = null) {
-  return incoming(event, path)
+function arriving(event, path = null, terminal = null) {
+  return incoming(event, path, terminal)
 }
 
 describe('which session Jarvis answers to', () => {
@@ -141,5 +142,86 @@ describe('closing the project', () => {
     const effects = core.dispatch(user.projectClosed())
     expect(hasEffect(effects, 'stopSpeaking')).toBe(true)
     expect(hasEffect(effects, 'cancelListening')).toBe(true)
+  })
+})
+
+// A Claude Code that ends without saying so — a crash, a killed window, an
+// update that restarts it — leaves Jarvis holding a conversation nobody is in,
+// and the one that follows it in the same terminal was discarded as "a second
+// session". Every answer went unspoken on 23 September 2026 for that reason.
+// The terminal Jarvis opened marks what runs in it, so its own sessions are told
+// apart from someone else's window on the same folder.
+describe('the terminal Jarvis opened', () => {
+  const TERMINAL = 't1'
+
+  function coreWithOwnTerminal() {
+    const core = new JarvisCore()
+    core.dispatch(user.projectOpened(PROJECT, TERMINAL))
+    return core
+  }
+
+  it('hands the conversation over to a new session started in it', () => {
+    const core = coreWithOwnTerminal()
+    core.receive(arriving(agent.sessionStarted('s1', 'startup'), PROJECT, TERMINAL))
+    core.receive(arriving(agent.sessionStarted('s2', 'startup'), PROJECT, TERMINAL))
+
+    expect(core.state.activeSessionId).toBe('s2')
+    const effects = core.receive(arriving(agent.assistantFinished('s2', 'heard'), PROJECT, TERMINAL))
+    expect(effects.length).toBeGreaterThan(0)
+  })
+
+  it('wins over a session restored from last time', () => {
+    const core = coreWithOwnTerminal()
+    core.dispatch(user.sessionRestored('stale'))
+    const effects = core.receive(arriving(agent.assistantFinished('fresh', 'heard'), PROJECT, TERMINAL))
+
+    expect(effects.length).toBeGreaterThan(0)
+    expect(core.state.activeSessionId).toBe('fresh')
+  })
+
+  it('does not let another window on the same folder take over', () => {
+    const core = coreWithOwnTerminal()
+    core.receive(arriving(agent.sessionStarted('s1', 'startup'), PROJECT, TERMINAL))
+    core.receive(arriving(agent.sessionStarted('s2', 'startup'), PROJECT, 'someone-else'))
+    core.receive(arriving(agent.sessionStarted('s3', 'startup'), PROJECT))
+
+    expect(core.state.activeSessionId).toBe('s1')
+  })
+
+  it('does not end the conversation over an ending that is not its own', () => {
+    const core = coreWithOwnTerminal()
+    core.receive(arriving(agent.sessionStarted('s1', 'startup'), PROJECT, TERMINAL))
+    core.receive(arriving(agent.sessionEnded('s0'), PROJECT, TERMINAL))
+
+    expect(core.state.activeSessionId).toBe('s1')
+  })
+
+  it('still needs to be in the open project', () => {
+    const core = coreWithOwnTerminal()
+    core.receive(arriving(agent.sessionStarted('s1', 'startup'), OTHER_PROJECT, TERMINAL))
+
+    expect(core.state.activeSessionId).toBeNull()
+  })
+})
+
+describe('the mark of the terminal on the way in', () => {
+  it('travels from the relay into the event', () => {
+    const decoded = decode(
+      JSON.stringify({
+        session_id: 's1',
+        cwd: PROJECT,
+        hook_event_name: 'SessionStart',
+        source: 'startup',
+        jarvis_terminal: 't1',
+      }),
+    )
+    expect(decoded.terminal).toBe('t1')
+  })
+
+  it('is absent from a session Jarvis did not open', () => {
+    const decoded = decode(
+      JSON.stringify({ session_id: 's1', cwd: PROJECT, hook_event_name: 'SessionStart' }),
+    )
+    expect(decoded.terminal).toBeNull()
   })
 })

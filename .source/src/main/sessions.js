@@ -110,16 +110,20 @@ function wireSharedAdapters() {
 }
 
 /**
- * Which Session a hook event belongs to. A Claude Code session a window has
- * already adopted wins by its id, so two windows open on the same folder each
- * keep their own conversation. A first event — no window owns that id yet — goes
- * to a window on that folder that has not adopted a session, then to any window
- * on that folder.
+ * Which Session a hook event belongs to. An event from the terminal a window
+ * opened is that window's, whatever it was holding. Otherwise a Claude Code
+ * session a window has already adopted wins by its id, so two windows open on
+ * the same folder each keep their own conversation. A first event — no window
+ * owns that id yet — goes to a window on that folder that has not adopted a
+ * session, then to any window on that folder.
  */
 function routeHook(incoming) {
   const sessionId = incoming.event.sessionId
   const cwd = incoming.workingDirectory
 
+  for (const session of all) {
+    if (session.ownsTerminal(incoming.terminal ?? null)) return session
+  }
   for (const session of all) {
     if (session.ownsClaudeSession(sessionId)) return session
   }
