@@ -112,38 +112,12 @@ function createTranscript() {
   return { begin, append, end, current }
 }
 
-/**
- * The most recent conversation logs of a project, newest first, as paths
- * relative to the project — the form Claude Code reads, since it runs there. The
- * folder is only ever read here, on request; Jarvis never opens it on its own.
- *
- * @param exclude a file path to leave out — the log of the Session asking, which
- *                is the current conversation, not a previous one.
- */
-function recent(projectPath, { limit = 3, exclude = null } = {}) {
-  const folder = path.join(projectPath, FOLDER)
-  let names
-  try {
-    names = fs.readdirSync(folder)
-  } catch {
-    return []
-  }
-  const excludeName = exclude ? path.basename(exclude) : null
-  return names
-    .filter((name) => name.endsWith('.md') && name !== excludeName)
-    .sort()
-    .reverse()
-    .slice(0, limit)
-    .map((name) => `${FOLDER}/${name}`)
-}
-
 // A default instance keeps the module's own begin/append/end/current working for
 // callers and tests that use the transcript as a singleton.
 const defaultTranscript = createTranscript()
 
 module.exports = {
   createTranscript,
-  recent,
   begin: defaultTranscript.begin,
   append: defaultTranscript.append,
   end: defaultTranscript.end,

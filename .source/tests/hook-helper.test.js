@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import net from 'node:net'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -25,16 +24,12 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RELAY = path.join(appRoot, 'src', 'main', 'helpers', 'hook-relay.js')
 
 /**
- * A channel of this test's own, in whatever shape the platform uses: a named
- * pipe on Windows, a socket file anywhere else. Written the way the app writes
- * it, so the address the relay has to reach is the real thing and not a string
- * that happens to work as a file name.
+ * A named pipe of this test's own, written the way the app writes it, so the
+ * address the relay has to reach is the real thing and not a string that
+ * happens to work as a file name.
  */
 function channelFor(what) {
-  const name = `jarvis-hook-${what}-${process.pid}`
-  return process.platform === 'win32'
-    ? `\\\\.\\pipe\\${name}`
-    : path.join(os.tmpdir(), `${name}.sock`)
+  return `\\\\.\\pipe\\jarvis-hook-${what}-${process.pid}`
 }
 
 let relay = null
@@ -169,21 +164,65 @@ describe('the relay Claude Code runs', () => {
     'never pulls Electron in behind it',
     () => {
       // The relay runs as Node, where `require('electron')` throws. It reaches
-      // for one module of the app's own, and that module has to stay as free of
-      // the app as this one is — the day it grows an import of something that
-      // wants Electron, every event stops arriving and nothing says why.
-      for (const file of [RELAY, path.join(path.dirname(RELAY), 'hook-channel.js')]) {
+      // for two modules of the app's own — the address, and the plan tool's
+      // approval — and those have to stay as free of the app as this one is:
+      // the day one grows an import of something that wants Electron, every
+      // event stops arriving and nothing says why.
+      const helpers = path.dirname(RELAY)
+      for (const file of [RELAY, path.join(helpers, 'hook-channel.js'), path.join(helpers, 'plan-approval.js')]) {
         const source = fs.readFileSync(file, 'utf8')
         expect(source, `${path.basename(file)} imports Electron`).not.toMatch(
           /require\('electron'\)/,
         )
         for (const reach of source.matchAll(/require\('(\.[^']*)'\)/g)) {
           expect(
-            ['./hook-channel'],
+            ['./hook-channel', './plan-approval'],
             `${path.basename(file)} reaches for ${reach[1]}`,
           ).toContain(reach[1])
         }
       }
     },
+  )
+})
+
+describe('the plan tool’s approval', () => {
+  it(
+    'prints the allow decision and nothing else, and sends nothing',
+    async () => {
+      const { APPROVE_FLAG } = await import('../src/core/hook-installer.js')
+      const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1', JARVIS_PIPE: channelFor('approval') }
+      const child = spawn(electronBinary(), [RELAY, '--jarvis-hook', APPROVE_FLAG], {
+        env,
+        stdio: ['pipe', 'pipe', 'ignore'],
+      })
+      relay = child
+      let printed = ''
+      child.stdout.setEncoding('utf8')
+      child.stdout.on('data', (chunk) => {
+        printed += chunk
+      })
+      const code = await new Promise((resolve, reject) => {
+        child.on('error', reject)
+        child.on('exit', resolve)
+        child.stdin.end(
+          JSON.stringify({
+            session_id: 's',
+            hook_event_name: 'PreToolUse',
+            tool_name: 'mcp__jarvis__update_plan',
+            tool_input: { steps: [] },
+          }),
+        )
+      })
+
+      expect(code).toBe(0)
+      expect(JSON.parse(printed)).toEqual({
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'allow',
+          permissionDecisionReason: expect.any(String),
+        },
+      })
+    },
+    40_000,
   )
 })

@@ -6,7 +6,6 @@ import {
   POSITIONS,
   RAIL,
   RAIL_MAX,
-  SETTINGS,
   TERMINAL_FLOOR,
   clampMeasure,
   defaultMeasure,
@@ -15,6 +14,7 @@ import {
   layOut,
   nextPosition,
 } from '../src/core/geometry.js'
+import * as geometryModule from '../src/core/geometry.js'
 
 /** The window Jarvis opens at, for the cases that are not about a tight fit. */
 const ROOM = { width: 1240, height: 780 }
@@ -176,32 +176,30 @@ describe('the Settings sheet over it', () => {
   it('takes no room at all while it is shut', () => {
     const { settings } = layOut({ ...ROOM, position: 'right', wanted: RAIL })
     expect(settings.width).toBe(0)
+    expect(settings.height).toBe(0)
   })
 
-  it('opens at 396 against the right edge, the full height of the window', () => {
-    const { settings } = layOut({
-      ...ROOM,
-      position: 'right',
-      wanted: RAIL,
-      settingsOpen: true,
-    })
-    expect(settings).toEqual({ x: 1240 - SETTINGS, y: 0, width: SETTINGS, height: 780 })
+  // ADR 0036: the sheet is the whole window while it is open, whichever side
+  // the panel is on and whatever shape it has. The terminal keeps its place
+  // underneath it and runs on; nothing is resized when the sheet opens.
+  it('is the whole window while it is open, wherever the panel is', () => {
+    for (const position of ['left', 'top', 'right', 'bottom']) {
+      for (const collapsed of [false, true]) {
+        const { settings } = layOut({ ...ROOM, position, collapsed, wanted: RAIL, settingsOpen: true })
+        expect(settings).toEqual({ x: 0, y: 0, width: 1240, height: 780 })
+      }
+    }
   })
 
-  it('crosses to the left edge when that is where the panel is', () => {
-    const { settings } = layOut({ ...ROOM, position: 'left', wanted: RAIL, settingsOpen: true })
-    expect(settings.x).toBe(0)
+  it('leaves the terminal and the panel where they were', () => {
+    const shut = layOut({ ...ROOM, position: 'right', wanted: RAIL })
+    const open = layOut({ ...ROOM, position: 'right', wanted: RAIL, settingsOpen: true })
+    expect(open.terminal).toEqual(shut.terminal)
+    expect(open.panel).toEqual(shut.panel)
   })
 
-  it('keeps its own shape over a band, since there is no 396 to cover', () => {
-    const { settings } = layOut({ ...ROOM, position: 'bottom', wanted: BAND, settingsOpen: true })
-    expect(settings).toEqual({ x: 1240 - SETTINGS, y: 0, width: SETTINGS, height: 780 })
-  })
-
-  it('is never wider than the window it is in', () => {
-    const { settings } = layOut({ width: 300, height: 400, position: 'right', settingsOpen: true })
-    expect(settings.width).toBe(300)
-    expect(settings.x).toBe(0)
+  it('has no width of its own any more', () => {
+    expect(geometryModule.SETTINGS).toBeUndefined()
   })
 })
 

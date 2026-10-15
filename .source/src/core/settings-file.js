@@ -63,10 +63,14 @@ let writeCounter = 0
  * Writes an object as sorted, pretty JSON, atomically. The temporary file is
  * named uniquely per write — pid and a counter — so two writers to the same
  * settings file cannot rename over each other's half-written temp.
+ *
+ * `sorted: false` keeps the keys in the order they came: for a file that is
+ * Claude Code's own state rather than settings a person reads (~/.claude.json),
+ * where a reordering would be a change Jarvis had no reason to make.
  */
-function writeSettings(file, value) {
+function writeSettings(file, value, { sorted: sorting = true } = {}) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  const sorted = Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+  const sorted = sorting ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))) : value
   const temporary = `${file}.jarvis-${process.pid}-${writeCounter++}.writing`
   fs.writeFileSync(temporary, `${JSON.stringify(sorted, null, 2)}\n`, 'utf8')
   fs.renameSync(temporary, file)

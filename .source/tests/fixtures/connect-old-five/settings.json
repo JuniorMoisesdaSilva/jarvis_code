@@ -1,0 +1,200 @@
+{
+  "agentPushNotifEnabled": true,
+  "autoMode": {
+    "soft_deny": [
+      "$defaults"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured"
+    ]
+  },
+  "autoUpdatesChannel": "latest",
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true
+  },
+  "env": {
+    "CLAUDE_CODE_PLUGIN_DIRS": "C:/Plugins"
+  },
+  "extraKnownMarketplaces": {},
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=SessionStart&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{RELAY}}\" --jarvis-hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=Stop&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{RELAY}}\" --jarvis-hook"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 330 -X POST --data-binary @- \"http://localhost:8765/permission?event=PermissionRequest&client=logi-claude-desktop\"; exit 0",
+            "timeout": 330
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{RELAY}}\" --jarvis-hook"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=UserPromptSubmit&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{RELAY}}\" --jarvis-hook"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=SessionEnd&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{RELAY}}\" --jarvis-hook"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=PreToolUse&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=PostToolUse&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=PostToolUseFailure&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=Notification&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s --connect-timeout 0.5 -m 5 -X POST --data-binary @- \"http://localhost:8765/hook?event=StopFailure&client=logi-claude-desktop\"; exit 0",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "inputNeededNotifEnabled": true,
+  "language": "portuguese",
+  "model": "opus[1m]",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "xhigh"
+    }
+  },
+  "outputStyle": "Resumo leigo",
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)"
+    ],
+    "defaultMode": "auto"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "type": "command",
+    "command": "node \"{{FOLDER}}/Brain/LAYOUT.js\"",
+    "padding": 1
+  },
+  "theme": "dark",
+  "verbose": false,
+  "viewMode": "focus"
+}

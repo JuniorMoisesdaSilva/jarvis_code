@@ -126,6 +126,29 @@ describe('telling sessions apart', () => {
     expect(core.state.activeSessionId).toBe('new')
   })
 
+  // Claude Code reports the folder its shell is in now, not the one it opened
+  // in. One `cd` into a subfolder and every answer after it went unread, for
+  // the rest of the session, on 9 October 2026.
+  it('keeps reading after Claude Code moves into a subfolder of the project', () => {
+    const core = new JarvisCore({ autoRead: true })
+    core.dispatch(user.projectOpened('/project'))
+    core.receive(incoming(agent.assistantFinished(SESSION, 'first'), '/project'))
+    core.dispatch(user.speechFinished())
+
+    const effects = core.receive(
+      incoming(agent.assistantFinished(SESSION, 'second'), '/project/receipts/2025'),
+    )
+
+    expect(effects).toContainEqual(effect.speak('second', PORTUGUESE))
+  })
+
+  it('still ignores a folder that only begins with the project name', () => {
+    const core = new JarvisCore({ autoRead: true })
+    core.dispatch(user.projectOpened('/project'))
+
+    expect(core.receive(incoming(agent.assistantFinished(SESSION, 'no'), '/project-old'))).toEqual([])
+  })
+
   it('interrupts speech and listening when the session ends', () => {
     const core = attachedCore()
     core.dispatch(user.micPressed())
@@ -448,13 +471,13 @@ describe('the held state does not linger past an interruption', () => {
 })
 
 describe('the request to catch up from previous conversations', () => {
-  it('names the files and follows the spoken language', () => {
+  it('names the .jarvis folder and follows the spoken language', () => {
     const { recallConversationsPrompt } = require('../src/core/language.js')
-    const pt = recallConversationsPrompt(PORTUGUESE, ['.jarvis/a.md', '.jarvis/b.md'])
-    expect(pt).toContain('`.jarvis/a.md`, `.jarvis/b.md`')
-    expect(pt).toContain('conversas anteriores')
-    const en = recallConversationsPrompt(ENGLISH, ['.jarvis/a.md'])
-    expect(en).toContain('`.jarvis/a.md`')
-    expect(en).toContain('previous conversations')
+    const pt = recallConversationsPrompt(PORTUGUESE)
+    expect(pt).toContain('.jarvis')
+    expect(pt).toContain('últimas conversas')
+    const en = recallConversationsPrompt(ENGLISH)
+    expect(en).toContain('.jarvis')
+    expect(en).toContain('latest conversations')
   })
 })

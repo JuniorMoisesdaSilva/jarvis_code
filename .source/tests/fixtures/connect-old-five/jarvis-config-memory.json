@@ -1,0 +1,13 @@
+{
+  "__created__": [],
+  "__placed__": [],
+  "language": "portuguese",
+  "model": "opus[1m]",
+  "outputStyle": "Resumo leigo",
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"{{HOME}}/.claude/statusline-command.ps1\"",
+    "padding": 1
+  },
+  "viewMode": "focus"
+}

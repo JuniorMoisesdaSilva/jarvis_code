@@ -1,14 +1,12 @@
 'use strict'
 
-// Unpacking an archive, the one way both platforms manage it.
+// Unpacking an archive.
 //
-// bsdtar reads bzip2 and gzip by itself, and both platforms have it: Windows has
-// carried it since Windows 10, and it is what `/usr/bin/tar` is on a Mac.
-// Shelling out to it beats adding a decompression library for a handful of
-// files fetched at build time.
+// bsdtar reads bzip2, gzip and zip by itself, and Windows has carried it since
+// Windows 10. Shelling out to it beats adding a decompression library for a
+// handful of files fetched at build time.
 //
-// On Windows it is named by full path on purpose. On a machine with Git
-// installed, plain `tar` finds GNU tar first, which does not decompress bzip2
+// It is named by full path on purpose. On a machine with Git installed, plain `tar` finds GNU tar first, which does not decompress bzip2
 // itself: it pipes the archive through `bzip2.exe`, and that pipe breaks when
 // the process has no console — which is exactly the case when npm runs a script.
 // The archive is perfectly good and the error says it is corrupted, so this is
@@ -20,10 +18,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 
-const BSDTAR =
-  process.platform === 'win32'
-    ? path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe')
-    : '/usr/bin/tar'
+const BSDTAR = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
 
 /**
  * Unpacks `archive` into `into`, which is created if it is not there. `extra`

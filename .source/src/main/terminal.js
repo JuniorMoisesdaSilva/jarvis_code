@@ -12,7 +12,7 @@
 const pty = require('node-pty')
 const { argumentsFor } = require('./shell-arguments')
 const { forShell } = require('./shell-environment')
-const { typeable } = require('../core/typed-text')
+const { typeable, pasted } = require('../core/typed-text')
 
 /**
  * A Terminal channel bound to one window's terminal pane.
@@ -142,6 +142,31 @@ function createTerminal(getContents) {
     return true
   }
 
+  /**
+   * A paste made in the terminal pane, kept whole where the program in front
+   * asked for bracketed paste and typed like `insert` where it did not. The
+   * one writer besides `run` that may send a carriage return, and only inside
+   * the markers — see Docs/decisions/0029-a-pane-paste-keeps-its-lines.md.
+   */
+  function paste(text, bracketed) {
+    if (!shellProcess) return false
+    shellProcess.write(pasted(text, bracketed === true))
+    return true
+  }
+
+  /**
+   * Text for the pane to paste as though the user had pressed Ctrl+V there.
+   * The pane is the one side that knows whether the program in front asked for
+   * bracketed paste, so a paste from anywhere else goes through it, and comes
+   * back by `paste`.
+   */
+  function offerPaste(text) {
+    const contents = getContents()
+    if (!shellProcess || !contents || contents.isDestroyed()) return false
+    contents.send('terminal:paste-text', text)
+    return true
+  }
+
   /** Types a command and presses Enter. */
   function run(command) {
     if (!shellProcess) return false
@@ -190,6 +215,8 @@ function createTerminal(getContents) {
     open,
     close,
     insert,
+    paste,
+    offerPaste,
     run,
     typeFromUser,
     resize,

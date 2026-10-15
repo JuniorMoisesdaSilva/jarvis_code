@@ -41,9 +41,8 @@ function emit(name, payload) {
  * nothing.
  */
 /**
- * The compartment the voices are read from. One copy, at the folder's root, so
- * Windows and macOS speak in the same voices from the same files rather than
- * carrying one set each. See docs/decisions/0019.
+ * The compartment the voices are read from. One copy, at the folder's root,
+ * beside the app rather than inside it. See docs/decisions/0019.
  */
 function root() {
   return onDisk(require('./data-location').where().resourcesDir)

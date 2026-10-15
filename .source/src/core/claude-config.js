@@ -4,7 +4,7 @@
 //
 // Where the hook installer teaches Claude Code to *report* to Jarvis, this
 // teaches it to *behave* like Jarvis: the Resumo leigo output style so answers
-// are written to be heard, the two-line status line, the model, and the Maestro
+// are written to be heard, the status line that reports to the Gauge, the model, and the Maestro
 // that runs a piece of work from request to delivery. The settings are
 // single-valued keys in a file the user owns, which makes this harder than
 // installing a hook — a hook is added beside whatever was there, but setting a
@@ -31,6 +31,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { readSettings, writeSettings, UnreadableSettingsError, isPlainObject } = require('./settings-file')
+const servers = require('./mcp-registration')
 
 /** A key Jarvis did not find is remembered as this, never as a real value. */
 const ABSENT = { __jarvis_absent__: true }
@@ -59,7 +60,23 @@ const ABSENT = { __jarvis_absent__: true }
 const PLACED = '__placed__'
 const CREATED = '__created__'
 const STYLE_PLACED = '__styleFilePlaced__'
-const RESERVED = new Set([PLACED, CREATED, STYLE_PLACED])
+/**
+ * `MCP` records what the host's own MCP server list held, before Connect, under
+ * each name Jarvis registers there: `{ hadServers, servers: { name: value or
+ * ABSENT } }`. The list lives in a second file (~/.claude.json), and the record
+ * lives here all the same, so one memory undoes one Connect. A name is recorded
+ * the first time Jarvis registers it and never again, so a memory written
+ * before the plan tool gains it at the next Connect.
+ */
+const MCP = '__mcp__'
+/**
+ * `ADOPTED` holds, by destination, the text of a file the host already had
+ * where a placement marked `adopt` lands: Jarvis took that file over, keeps it
+ * equal to its own from then on, and on Disconnect writes this text back
+ * rather than deleting the file.
+ */
+const ADOPTED = '__adopted__'
+const RESERVED = new Set([PLACED, CREATED, STYLE_PLACED, MCP, ADOPTED])
 
 /**
  * The topmost folder that would have to be created to put something at this
@@ -133,8 +150,24 @@ function wasAbsent(value) {
  *                     `isApplied()` back, because Connect must finish either way.
  *                     `legacy: true` marks the one placement an older memory
  *                     recorded as a single boolean.
+ *
+ *                     `adopt: true` marks a single file Jarvis takes over even
+ *                     when the host already has one by that name: the host's
+ *                     text is kept in the memory and written back on
+ *                     Disconnect. The style file is one — it is Jarvis's own
+ *                     name, and a stale copy is how the Plan went silent.
+ *
+ *                     `render` is for a single file whose copy is not word for
+ *                     word: given the source's text, it returns what to write.
+ *                     The style file uses it to describe itself in the panel's
+ *                     language.
+ * @param mcp          the MCP servers Jarvis registers for the user, `{ file,
+ *                     servers }`: Claude Code's own file (~/.claude.json) and
+ *                     the entries to put in its `mcpServers`, by name. Only
+ *                     those names are ever touched, and Disconnect puts back
+ *                     what each was (ADR 0034).
  */
-function createConfigurator({ settingsFile, memoryFile, desired, placements = [] }) {
+function createConfigurator({ settingsFile, memoryFile, desired, placements = [], mcp = null }) {
   const keys = Object.keys(desired)
 
   /** The destinations this memory says Connect put on the host. */
@@ -144,6 +177,21 @@ function createConfigurator({ settingsFile, memoryFile, desired, placements = []
     return placements.filter((each) => each.legacy).map((each) => each.destination)
   }
 
+  /** Keeps the text of a host's own file Jarvis is about to take over. */
+  function adopt(memory, placement) {
+    const adopted = isPlainObject(memory[ADOPTED]) ? memory[ADOPTED] : {}
+    if (!(placement.destination in adopted)) {
+      adopted[placement.destination] = fs.readFileSync(placement.destination, 'utf8')
+    }
+    memory[ADOPTED] = adopted
+  }
+
+  /** What a single-file placement should hold, as text. */
+  function rendered(placement) {
+    const text = fs.readFileSync(placement.source, 'utf8')
+    return placement.render ? placement.render(text) : text
+  }
+
   /** What the host had for each managed key, right now. */
   function snapshot(settings) {
     const memory = {}
@@ -151,8 +199,18 @@ function createConfigurator({ settingsFile, memoryFile, desired, placements = []
     return memory
   }
 
-  function apply() {
+  /**
+   * Connect. `servers: false` leaves the MCP list alone — the panel's language
+   * switch re-applies the settings, and has no business in ~/.claude.json, the
+   * file Claude Code keeps rewriting.
+   */
+  function apply({ servers: withServers = true } = {}) {
+    const registering = Boolean(mcp) && withServers
     const settings = readSettings(settingsFile, { onMissing: 'empty' })
+    // Both files read before anything is written: one that cannot be read
+    // stops Connect with nothing changed anywhere. This read of the MCP file is
+    // only for that, and for the record; the write reads it again (below).
+    const hosted = registering ? servers.read(mcp.file) : null
 
     // Record the host's own values once, before Jarvis has changed anything. On
     // a second Connect the memory already exists and is left as it was, so the
@@ -166,17 +224,27 @@ function createConfigurator({ settingsFile, memoryFile, desired, placements = []
     // Connect — the Maestro's embedded copies start travelling the moment the
     // skills package is uninstalled — and one that is already the host's own
     // never joins it at all.
+    if (hosted) memory[MCP] = servers.record(memory[MCP], hosted.servers, Object.keys(mcp.servers))
+
     const placed = new Set(placedPaths(memory))
     const created = new Set(Array.isArray(memory[CREATED]) ? memory[CREATED] : [])
 
     try {
       for (const each of placements) {
         const ours = placed.has(each.destination)
-        if (!ours && fs.existsSync(each.destination)) continue // the host's own
+        if (!ours && fs.existsSync(each.destination)) {
+          if (!each.adopt) continue // the host's own
+          adopt(memory, each)
+        }
         const making = ours ? null : topmostMissing(each.destination)
         try {
           fs.mkdirSync(path.dirname(each.destination), { recursive: true })
-          fs.cpSync(each.source, each.destination, { recursive: true })
+          if (each.render) {
+            const text = fs.readFileSync(each.source, 'utf8')
+            fs.writeFileSync(each.destination, each.render(text), 'utf8')
+          } else {
+            fs.cpSync(each.source, each.destination, { recursive: true })
+          }
         } catch (error) {
           // Nothing was placed, so nothing here is Jarvis's to take back later —
           // including the folders the attempt just made.
@@ -195,46 +263,77 @@ function createConfigurator({ settingsFile, memoryFile, desired, placements = []
       writeSettings(memoryFile, memory)
     }
 
+    // Claude Code rewrites its file all the time, so it is read and written
+    // back in one step, after everything else, and not at all when the server
+    // is already there — never held while the placements are copied.
+    if (registering) servers.register(mcp.file, mcp.servers)
+
     for (const key of keys) settings[key] = desired[key]
     writeSettings(settingsFile, settings)
   }
 
+  /**
+   * Disconnect. Every step is tried — the settings, the MCP list, the
+   * placements, the folders — even when one fails, so one file that cannot be
+   * written does not leave the rest of Jarvis on the host; the first failure is
+   * thrown once they all have been. The memory is removed only when both
+   * restores succeeded: kept, it lets a Disconnect made once the file is fixed
+   * still put back the host's own values.
+   */
   function remove() {
     const memory = readSettings(memoryFile, { onMissing: 'null' })
     if (memory === null) return // never applied; nothing of ours to take back
 
-    const settings = readSettings(settingsFile, { onMissing: 'empty' })
+    const failures = []
+    const step = (undo) => {
+      try {
+        undo()
+      } catch (error) {
+        failures.push(error)
+      }
+    }
+
     // Undo exactly the keys the memory records, which is what Connect actually
     // wrote — not the current desired keys, which may since have changed. That
     // is what keeps a personality edited between Connect and Disconnect from
     // leaving a Jarvis value on the host or wiping a host value.
-    for (const key of Object.keys(memory)) {
-      if (RESERVED.has(key)) continue
-      if (wasAbsent(memory[key])) delete settings[key]
-      else settings[key] = memory[key]
-    }
-    writeSettings(settingsFile, settings)
+    step(() => {
+      const settings = readSettings(settingsFile, { onMissing: 'empty' })
+      for (const key of Object.keys(memory)) {
+        if (RESERVED.has(key)) continue
+        if (wasAbsent(memory[key])) delete settings[key]
+        else settings[key] = memory[key]
+      }
+      writeSettings(settingsFile, settings)
+    })
+    if (mcp) step(() => servers.unregister(mcp.file, memory[MCP]))
+    const restored = failures.length === 0
 
     // Take back only what Jarvis itself put on the host, whole folders included,
     // and then, in a second pass so no chain is cut short by another still being
     // there, the folders it had to make to put them there.
     const ours = placedPaths(memory)
+    const adopted = isPlainObject(memory[ADOPTED]) ? memory[ADOPTED] : {}
     for (const destination of ours) {
       try {
-        fs.rmSync(destination, { recursive: true, force: true })
-      } catch {
-        // Already gone, or never written — either way there is nothing to undo.
+        if (typeof adopted[destination] === 'string') fs.writeFileSync(destination, adopted[destination], 'utf8')
+        else fs.rmSync(destination, { recursive: true, force: true })
+      } catch (error) {
+        failures.push(error)
       }
     }
     const roots = new Set(Array.isArray(memory[CREATED]) ? memory[CREATED] : [])
     for (const destination of ours) pruneCreated(destination, roots)
 
-    try {
-      fs.rmSync(memoryFile)
-    } catch {
-      // If the memory cannot be removed the restore still happened; a stale
-      // memory only means the next Connect keeps an already-correct record.
+    if (restored) {
+      try {
+        fs.rmSync(memoryFile)
+      } catch {
+        // If the memory cannot be removed the restore still happened; a stale
+        // memory only means the next Connect keeps an already-correct record.
+      }
     }
+    if (failures.length > 0) throw failures[0]
   }
 
   function isApplied() {
@@ -252,10 +351,67 @@ function createConfigurator({ settingsFile, memoryFile, desired, placements = []
     const placementsReady = placements.every(
       (each) => each.optional || fs.existsSync(each.destination),
     )
-    return keysMatch && placementsReady
+    return keysMatch && placementsReady && (!mcp || servers.isRegistered(mcp.file, mcp.servers))
   }
 
-  return { apply, remove, isApplied, settingsFile, memoryFile }
+  /**
+   * Brings the single files Jarvis keeps on the host up to date with what it
+   * carries, while it is connected: each file it placed that no longer says
+   * what its source does is written again, and a host's own file a placement
+   * adopts is taken over now. Folders are left to Connect. Nothing happens on
+   * a machine never connected. Returns whether anything was written.
+   */
+  function refresh() {
+    const memory = readSettings(memoryFile, { onMissing: 'null' })
+    if (memory === null) return false
+    const placed = new Set(placedPaths(memory))
+    let changed = false
+    for (const each of placements) {
+      if (!fs.existsSync(each.source) || fs.statSync(each.source).isDirectory()) continue
+      const ours = placed.has(each.destination)
+      if (!ours && !each.adopt) continue
+      const there = fs.existsSync(each.destination)
+      if (!ours && !there) continue // Connect has not placed it; not ours to start
+      const wanted = rendered(each)
+      if (ours && there && fs.readFileSync(each.destination, 'utf8') === wanted) continue
+      if (!ours) adopt(memory, each)
+      fs.writeFileSync(each.destination, wanted, 'utf8')
+      placed.add(each.destination)
+      changed = true
+    }
+    if (changed) {
+      memory[PLACED] = [...placed]
+      writeSettings(memoryFile, memory)
+    }
+    return changed
+  }
+
+  return { apply, remove, isApplied, refresh, settingsFile, memoryFile }
 }
 
-module.exports = { createConfigurator, UnreadableSettingsError, ABSENT }
+/**
+ * The style file as it is placed for one language.
+ *
+ * Claude Code's style picker shows the file's `description`, and the interface
+ * is in the panel's language like the answers are. The carried file keeps the
+ * English one as `description` and the Portuguese one as `description-pt`, so
+ * both live in Brain beside the style they describe. The placed copy has only
+ * the one that applies, under the name Claude Code reads.
+ */
+function localizedStyle(text, portuguese) {
+  const front = /^---\r?\n[\s\S]*?\r?\n---/.exec(text)
+  if (!front) return text
+  const lines = front[0].split(/\r?\n/)
+  const translated = lines.find((line) => line.startsWith('description-pt:'))
+  const kept = lines
+    .filter((line) => !line.startsWith('description-pt:'))
+    .map((line) =>
+      portuguese && translated && line.startsWith('description:')
+        ? `description:${translated.slice('description-pt:'.length)}`
+        : line,
+    )
+  const eol = front[0].includes('\r\n') ? '\r\n' : '\n'
+  return kept.join(eol) + text.slice(front[0].length)
+}
+
+module.exports = { createConfigurator, localizedStyle, UnreadableSettingsError, ABSENT }

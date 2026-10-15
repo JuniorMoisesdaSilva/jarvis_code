@@ -1,10 +1,8 @@
 'use strict'
 
-// `npm test`, without the `.bin` shim — the same reason as scripts/start.js.
-//
-// The shims in a tree two machines share belong to whichever machine installed,
-// so `vitest` as a name is not there on the other one. Vitest's own entry point
-// is a real file in the package and works either way, so it is started by path.
+// `npm test`, without the `.bin` shim — the same way scripts/start.js starts
+// Electron. Vitest's own entry point is a real file in the package, so it is
+// started by path and nothing is resolved by name.
 
 const { spawn } = require('node:child_process')
 const path = require('node:path')

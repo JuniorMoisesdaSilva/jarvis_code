@@ -10,8 +10,11 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { isLanguage, PORTUGUESE, ALL } = require('./language')
 const { isShortcut, repair, defaults: defaultShortcuts } = require('./command-shortcut')
+const { SKILL_GLYPH, COLUMNS, SPINE_FONT, BUTTON_FONT, TERMINAL_FONT, within, inOrder } = require('./button-look')
 const { defaultShell, isNativePath, current } = require('./platform')
 const { isPosition, RAIL, RAIL_MAX, BAND, BAND_MAX } = require('./geometry')
+const { BLOCKS, DECK_FONT } = require('./deck-chips')
+const { PARTS, DEFAULT_ORDER, cleanOrder, cleanHidden } = require('./spine')
 
 class UnreadablePreferencesError extends Error {
   constructor(file, cause) {
@@ -42,14 +45,10 @@ function isPlainObject(value) {
 const FIELDS = Object.freeze({
   /**
    * `keep` is handed the platform as well as the value, for the two fields that
-   * hold a path. The file travels in the folder, so it arrives carrying the
-   * other machine's answers — see isNativePath in the core's platform file.
+   * hold a path. A path that is not shaped like a Windows one is nothing this
+   * machine can open — see isNativePath in the core's platform file.
    */
   shell: {
-    // A function, because what a shell falls back to is the one thing here that
-    // differs by machine — and `sanitize` is now asked about platforms other
-    // than the one running, so a fallback fixed when this file loaded would
-    // hand a Mac PowerShell.
     fallback: (platform) => defaultShell(platform),
     keep: (value, platform) => isNonEmptyString(value) && isNativePath(value, platform),
     clean: (value) => value.trim(),
@@ -64,16 +63,17 @@ const FIELDS = Object.freeze({
    * and rounding it away would change the app's look to add a setting.
    */
   terminalFontSize: {
-    fallback: 13.5,
-    keep: (value) => typeof value === 'number' && Number.isFinite(value) && value >= 9 && value <= 24,
+    fallback: TERMINAL_FONT.size,
+    keep: (value) =>
+      typeof value === 'number' && Number.isFinite(value) && value >= TERMINAL_FONT.min && value <= TERMINAL_FONT.max,
   },
   theme: { fallback: 'dark', keep: (value) => ['dark', 'light', 'iron'].includes(value) },
   /**
    * Which side the panel is on, how thick it is there, and whether it is
    * retracted.
    *
-   * These name no place on the disk, so unlike the shell and the project they
-   * travel with the folder and mean the same thing on either machine.
+   * These name no place on the disk, so unlike the shell and the project there
+   * is nothing in them that can belong to somewhere else.
    *
    * What is stored is the shape a **new** window opens at. Preferences are one
    * file for the whole app, so dragging an edge in one window writes the number
@@ -94,9 +94,53 @@ const FIELDS = Object.freeze({
     keep: (value) => Number.isFinite(value) && value >= BAND && value <= BAND_MAX,
   },
   autoRead: { fallback: true, keep: (value) => typeof value === 'boolean' },
-  // When on, each new Session types a request for Claude Code to read the
-  // project's last few conversations, so it opens already caught up.
-  useMemory: { fallback: false, keep: (value) => typeof value === 'boolean' },
+  // The five Deck switches, one field each — deckPlan, deckGauge and so on,
+  // named in the catalogue (deck-chips.js). All off to start but the Gauge,
+  // which shows what the status line under the terminal used to; one for
+  // every window, like Read aloud.
+  ...Object.fromEntries(
+    BLOCKS.map((block) => [
+      block.preference,
+      { fallback: block.startsOn === true, keep: (value) => typeof value === 'boolean' },
+    ]),
+  ),
+  // The four sections' switches on the Spine — partCommands, partSkills,
+  // partReadings, partSession, named in spine.js — on to start, so the Panel
+  // opens as it did before the Spine. One set for every window.
+  ...Object.fromEntries(
+    PARTS.filter((part) => !part.deck).map((part) => [
+      part.preference,
+      { fallback: true, keep: (value) => typeof value === 'boolean' },
+    ]),
+  ),
+  // The Spine's order, which is the page's: unknown ids dropped, the missing
+  // appended in the default order — so it is always all nine, once each.
+  spineOrder: { fallback: [...DEFAULT_ORDER], keep: Array.isArray, clean: cleanOrder },
+  // The Parts whose button is hidden from the Spine. A hidden Part is off
+  // (spine.js partsOn).
+  spineHidden: { fallback: [], keep: Array.isArray, clean: cleanHidden },
+  // How the Commands and the Skills stand down a side: 1 to 5 columns, three
+  // to start (button-look.js holds the ranges).
+  commandColumns: { fallback: COLUMNS.size, keep: (value) => within(COLUMNS, value) },
+  skillColumns: { fallback: COLUMNS.size, keep: (value) => within(COLUMNS, value) },
+  // The text sizes of the Spine's labels and of the two kinds of button, in
+  // whole pixels as drawn.
+  spineFontSize: { fallback: SPINE_FONT.size, keep: (value) => within(SPINE_FONT, value) },
+  commandFontSize: { fallback: BUTTON_FONT.size, keep: (value) => within(BUTTON_FONT, value) },
+  skillFontSize: { fallback: BUTTON_FONT.size, keep: (value) => within(BUTTON_FONT, value) },
+  // The Plan block's own mute for its two sounds. Off to start, one for every
+  // window.
+  deckPlanMuted: { fallback: false, keep: (value) => typeof value === 'boolean' },
+  /**
+   * How big the Deck's text is, in pixels as drawn — the Deck's alone, apart
+   * from the terminal's. Whole pixels within DECK_FONT's range (deck-chips.js,
+   * where the reasons are); it starts at 10, a pixel under the 11 the Deck was
+   * drawn at before this was a setting.
+   */
+  deckFontSize: {
+    fallback: DECK_FONT.size,
+    keep: (value) => Number.isInteger(value) && value >= DECK_FONT.min && value <= DECK_FONT.max,
+  },
   // One model, since 8 September 2026. A file naming `tiny` or `small` falls
   // back to it rather than being honoured, which is the whole point of removing
   // them: they are not there to be opened.
@@ -117,7 +161,7 @@ const FIELDS = Object.freeze({
   shortcuts: {
     fallback: [],
     keep: Array.isArray,
-    clean: (value) => value.filter(isShortcut).map(repair),
+    clean: (value) => value.filter(isShortcut).map((each) => repair(each)),
   },
   // Skill shortcuts are stored just like command shortcuts — same shape, same
   // element-by-element repair — but as their own list, so the rail can show
@@ -125,7 +169,7 @@ const FIELDS = Object.freeze({
   skills: {
     fallback: [],
     keep: Array.isArray,
-    clean: (value) => value.filter(isShortcut).map(repair),
+    clean: (value) => value.filter(isShortcut).map((each) => repair(each, SKILL_GLYPH)),
   },
   voices: {
     fallback: {},
@@ -163,7 +207,7 @@ function sanitize(stored, platform = current()) {
 
   // The two session identifiers describe a shell and a conversation inside the
   // project, so they mean nothing without it. Dropped together rather than left
-  // dangling: a stored project written on the other machine takes them with it,
+  // dangling: a stored project that is dropped takes them with it,
   // and reconnecting to a session in a folder Jarvis has no project for is not
   // a thing that can be done.
   if (clean.projectPath === null) {
@@ -275,6 +319,16 @@ function createPreferences(file) {
       return write({ shortcuts: Array.isArray(shortcuts) ? shortcuts : [] })
     },
 
+    /**
+     * The Commands in the order a drop in the Panel gives, by id. Read through
+     * `shortcuts()`, so the built-ins an empty list stands for are written
+     * down in their new order rather than lost to the fallback.
+     */
+    setShortcutOrder(ids) {
+      const stored = read().shortcuts
+      return write({ shortcuts: inOrder(stored.length === 0 ? defaultShortcuts() : stored, ids) })
+    },
+
     // --- Skill shortcuts -----------------------------------------------------
 
     /**
@@ -288,6 +342,11 @@ function createPreferences(file) {
 
     setSkills(skills) {
       return write({ skills: Array.isArray(skills) ? skills : [] })
+    },
+
+    /** The Skills in the order a drop in the Panel gives, by id. */
+    setSkillOrder(ids) {
+      return write({ skills: inOrder(read().skills, ids) })
     },
 
     // --- Voice ---------------------------------------------------------------

@@ -1,15 +1,13 @@
 {
   "name": "jarvis",
   "version": "0.1.0",
-  "description": "A voice assistant for Claude Code sessions, on Windows and macOS",
+  "description": "A voice assistant for Claude Code sessions, on Windows",
   "private": true,
   "main": "src/main/main.js",
   "scripts": {
     "start": "node scripts/start.js",
     "test": "node scripts/test.js",
     "test:watch": "node scripts/test.js --watch",
-    "postinstall": "node scripts/after-install.js && node scripts/native-binaries.js",
-    "native-binaries": "node scripts/native-binaries.js",
     "runtime": "node scripts/platform-runtime.js",
     "fetch-assets": "node scripts/fetch-assets.js",
     "assemble": "node scripts/assemble.js"

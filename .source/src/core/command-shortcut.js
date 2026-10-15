@@ -8,9 +8,14 @@
 // wrote down yourself and can read on the button.
 
 const { randomUUID } = require('node:crypto')
+const { COMMAND_GLYPH, SKILL_GLYPH, cleanGlyph } = require('./button-look')
 
-function shortcut({ id = randomUUID(), label, command, submits = true }) {
-  return { id, label, command, submits }
+/**
+ * A Command shortcut. Its `glyph` is the icon on its button: one of the names
+ * in button-look.js, or null for none; a new one carries `terminal-window`.
+ */
+function shortcut({ id = randomUUID(), label, command, submits = true, glyph = COMMAND_GLYPH }) {
+  return { id, label, command, submits, glyph: cleanGlyph(glyph) }
 }
 
 /**
@@ -20,8 +25,8 @@ function shortcut({ id = randomUUID(), label, command, submits = true }) {
  * takes an argument typed after it, and pressing Enter too early would run it
  * bare. Skills ship none by default; the list starts empty and the user fills it.
  */
-function skill({ id = randomUUID(), label, command, submits = false }) {
-  return { id, label, command, submits }
+function skill({ id = randomUUID(), label, command, submits = false, glyph = SKILL_GLYPH }) {
+  return { id, label, command, submits, glyph: cleanGlyph(glyph) }
 }
 
 /**
@@ -34,13 +39,13 @@ function skill({ id = randomUUID(), label, command, submits = false }) {
  * recognised as the same button across restarts.
  */
 const BUILT_IN = Object.freeze([
-  { id: 'built-in-claude', label: 'Claude', command: 'claude' },
-  { id: 'built-in-continue', label: 'Continue', command: 'claude --continue' },
-  { id: 'built-in-resume', label: 'Resume', command: 'claude --resume' },
-  { id: 'built-in-update', label: 'Update', command: 'claude update' },
-  { id: 'built-in-usage', label: '/usage', command: '/usage' },
-  { id: 'built-in-context', label: '/context', command: '/context' },
-  { id: 'built-in-exit', label: 'Exit', command: 'exit' },
+  { id: 'built-in-claude', label: 'Claude', command: 'claude', glyph: 'terminal-window' },
+  { id: 'built-in-continue', label: 'Continue', command: 'claude --continue', glyph: 'play' },
+  { id: 'built-in-resume', label: 'Resume', command: 'claude --resume', glyph: 'clock-counter-clockwise' },
+  { id: 'built-in-update', label: 'Update', command: 'claude update', glyph: 'arrow-circle-up' },
+  { id: 'built-in-usage', label: '/usage', command: '/usage', glyph: 'gauge' },
+  { id: 'built-in-context', label: '/context', command: '/context', glyph: 'stack' },
+  { id: 'built-in-exit', label: 'Exit', command: 'exit', glyph: 'sign-out' },
 ])
 
 function defaults() {
@@ -61,15 +66,15 @@ function isShortcut(value) {
 /**
  * Puts a stored shortcut back into shape. An entry saved without an identifier
  * is given one rather than thrown away: losing a button the user wrote is worse
- * than repairing it.
+ * than repairing it. Its icon is kept, a name not in button-look.js dropped to
+ * none; an entry stored before there were icons at all is given one — a
+ * built-in its own, anything else its kind's (`fallback`: a Command's by
+ * default, a Skill's when the caller says so).
  */
-function repair(value) {
-  return shortcut({
-    id: typeof value.id === 'string' && value.id !== '' ? value.id : randomUUID(),
-    label: value.label,
-    command: value.command,
-    submits: value.submits,
-  })
+function repair(value, fallback = COMMAND_GLYPH) {
+  const id = typeof value.id === 'string' && value.id !== '' ? value.id : randomUUID()
+  const glyph = 'glyph' in value ? value.glyph : (BUILT_IN.find((each) => each.id === id)?.glyph ?? fallback)
+  return shortcut({ id, label: value.label, command: value.command, submits: value.submits, glyph })
 }
 
 module.exports = { shortcut, skill, defaults, isShortcut, repair }

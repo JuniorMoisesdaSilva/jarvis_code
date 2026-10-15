@@ -10,10 +10,6 @@ body {
   background: var(--color-bg);
 }
 
-body.dimmed {
-  opacity: 0.55;
-}
-
 /* The same margin on all four sides. It used to be 11.2 over 16.8, which read
    as a pane hung from a header; with the header gone there is nothing for the
    top to be tighter against. */

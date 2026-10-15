@@ -1,7 +1,7 @@
 'use strict'
 
 // The Jarvis mark, for the places the system draws it: the window, the taskbar,
-// the installer and the tray on Windows, and the Dock on macOS.
+// the installer and the tray.
 //
 // It used to be drawn pixel by pixel in JavaScript — a placeholder microphone,
 // encoded to a PNG at run time — so that the repository carried no opaque
@@ -23,7 +23,6 @@ const files = require('../core/icon-files')
 const FOLDER = onDisk(path.join(__dirname, '..', '..', files.FOLDER))
 
 let cachedTray = null
-let cachedDock = null
 
 /**
  * The window, taskbar and installer icon, as a path rather than an image.
@@ -40,30 +39,11 @@ function appIcon() {
 /**
  * The tray icon, which unlike the window's is an image and not a path.
  *
- * Windows' notification area takes the 32-point mark as it is. The macOS menu
- * bar is 22 points tall and does not scale to fit: handed a 32, it draws a 32
- * and the row grows around it. So it is resized here, to 18, which is the height
- * the system's own icons use.
+ * The notification area takes the 32-point mark as it is.
  */
 function trayIcon() {
-  if (!cachedTray) {
-    const mark = nativeImage.createFromPath(path.join(FOLDER, files.TRAY))
-    cachedTray = process.platform === 'darwin' ? mark.resize({ height: 18 }) : mark
-  }
+  if (!cachedTray) cachedTray = nativeImage.createFromPath(path.join(FOLDER, files.TRAY))
   return cachedTray
 }
 
-/**
- * The Dock icon, applied at run time.
- *
- * An assembled `Jarvis.app` carries its own `.icns` and needs none of this. Run
- * from the source it is Electron's own bundle on screen, named and drawn as
- * Electron — so the mark is set here instead, the same way ADR-0011 has the
- * Windows icon applied at run time rather than written into the executable.
- */
-function dockIcon() {
-  if (!cachedDock) cachedDock = nativeImage.createFromPath(path.join(FOLDER, files.DOCK))
-  return cachedDock
-}
-
-module.exports = { appIcon, trayIcon, dockIcon }
+module.exports = { appIcon, trayIcon }

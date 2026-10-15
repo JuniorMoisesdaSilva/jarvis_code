@@ -1,8 +1,9 @@
 'use strict'
 
-const { app, Menu, Tray, ipcMain } = require('electron')
+const { app, dialog, Menu, Tray, ipcMain } = require('electron')
 
 const hooks = require('./hooks')
+const { createHandover } = require('../core/second-launch')
 
 // Helper mode has to be decided before anything else starts. Claude Code runs
 // this on every event it reports, and it must not open a window, take a
@@ -17,30 +18,78 @@ function main() {
   const preferences = require('./preferences')
   const dictation = require('./dictation')
   const sessions = require('./sessions')
-  const { trayIcon, dockIcon } = require('./icon')
+  const { trayIcon } = require('./icon')
 
   let tray = null
 
   // One process holds the single hook channel and brokers the shared microphone
   // and voice. A second launch does not start its own copy — it asks the running
-  // one to open another window.
-  if (!app.requestSingleInstanceLock()) {
-    app.quit()
-    return
+  // one to open another window. It says what code it carries, because the
+  // running one may be older: closing the window leaves Jarvis in the tray, and
+  // a launch of code that has moved on since must not be answered by the code
+  // it replaced. Then the running one makes way and quits, and this launch —
+  // still waiting — takes the lock and starts as itself, with its own
+  // environment, folder and console (src/core/second-launch.js, ADR 0013).
+  const build = require('./build')
+  const handover = createHandover({ build: build.current() })
+  const { takeLock, writeAnswer } = require('./handover')
+
+  app.on('second-instance', (_event, _argv, _directory, arriving) => onSecondLaunch(arriving))
+  takeLock(build.current()).then((held) => {
+    if (held) app.whenReady().then(start)
+    else app.exit(process.exitCode ?? 0)
+  })
+
+  function onSecondLaunch(arriving) {
+    carryOut(handover.arrive({ arriving, windowsOpen: sessions.count() }))
   }
 
-  app.on('second-instance', () => sessions.openWindow())
-  app.whenReady().then(start)
+  function carryOut({ act, tell }) {
+    for (const { to, answer } of tell) writeAnswer(to, answer)
+    if (act === 'open') sessions.openWindow()
+    else if (act === 'keep') sessions.showOrOpen()
+    else if (act === 'ask') ask()
+    else if (act === 'make-way') {
+      console.log('Jarvis: a launch of newer code arrived; this Jarvis is making way for it.')
+      // Not from inside the handler: the launch is still waiting to hear that
+      // its message was received, and a Jarvis that quits before answering
+      // leaves it hanging.
+      setTimeout(() => app.quit(), 500)
+    }
+  }
+
+  /**
+   * Asks whether to restart, over the window the user was last in, brought to
+   * the front — a question that appears behind everything is a launch that
+   * seems to have done nothing.
+   */
+  function ask() {
+    const session = sessions.focused()
+    const parent = session?.handle.window()
+    if (parent && !parent.isDestroyed()) {
+      if (parent.isMinimized()) parent.restore()
+      session.handle.show()
+      parent.focus()
+    }
+    const question = {
+      type: 'question',
+      buttons: ['Restart Jarvis', 'Keep this one'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Jarvis',
+      message: 'Jarvis was started again, and its code has changed since this one began.',
+      detail:
+        'Restarting runs the new code. It closes these windows and the terminals in them, ' +
+        'and anything running in those terminals with them.',
+    }
+    const shown = parent && !parent.isDestroyed() ? dialog.showMessageBox(parent, question) : dialog.showMessageBox(question)
+    shown
+      .then(({ response }) => carryOut(handover.answer(response === 0)))
+      .catch(() => carryOut(handover.answer(false)))
+  }
 
   function start() {
     app.setAppUserModelId('com.jarvis.app')
-    // Run from the source, the app on screen is Electron's own bundle, so the
-    // Dock shows Electron's icon until this replaces it — the same run-time fix
-    // ADR-0011 uses on Windows rather than rewriting an executable. What cannot
-    // be fixed this way is the menu bar, which macOS titles from the bundle and
-    // never asks again: it reads "Electron" until the app is assembled, and
-    // `app.setName` does not move it. An assembled Jarvis.app has both right.
-    if (process.platform === 'darwin') app.dock?.setIcon(dockIcon())
     // Before anything listens: a settings file still naming an older Jarvis has
     // Claude Code starting the whole app on every event, which is slow enough
     // that the end of a session is cancelled mid-flight and the terminal prints
@@ -52,6 +101,10 @@ function main() {
     // would take the real Jarvis's events away for as long as it lives. A
     // developer who wants that can press Connect.
     if (app.isPackaged) hooks.upgradeInstalledHooks()
+    // The style file follows Brain the same way, on every start: a copy left
+    // behind by an older Jarvis, or one the host had before Connect, is how the
+    // Plan went silent.
+    require('./claude-config').refreshPlacedFiles(preferences.read().language)
     registerChannels()
     sessions.start()
     createTray()
@@ -87,6 +140,20 @@ function main() {
     const session = senderSession(event)
     const action = session?.actions?.[name]
     if (typeof action === 'function') action(argument)
+    // A page asking for an action this process does not have is a page newer
+    // than the process — the one way the two can disagree. Said, not swallowed.
+    else if (session) console.warn(`Jarvis: the page asked for "${name}", which this Jarvis does not have.`)
+  }
+
+  /**
+   * The same, for what a terminal pane sends — and only ever into that pane's
+   * own Session. A pane outlives its window's closing by a moment, and a paste
+   * sent in that moment would otherwise land in whichever window took focus,
+   * still carrying the closed pane's word on bracketed paste.
+   */
+  function actOnPane(event, name, argument) {
+    const action = sessions.sessionForContents(event.sender)?.actions?.[name]
+    if (typeof action === 'function') action(argument)
   }
 
   function registerChannels() {
@@ -99,9 +166,11 @@ function main() {
     ipcMain.on('voice:ended', (event) => actOn(event, 'voiceEnded'))
 
     // From the terminal pane.
-    ipcMain.on('terminal:ready', (event) => actOn(event, 'terminalReady'))
-    ipcMain.on('terminal:input', (event, data) => actOn(event, 'terminalInput', data))
-    ipcMain.on('terminal:resize', (event, size) => actOn(event, 'terminalResize', size))
+    ipcMain.on('terminal:ready', (event) => actOnPane(event, 'terminalReady'))
+    ipcMain.on('terminal:input', (event, data) => actOnPane(event, 'terminalInput', data))
+    ipcMain.on('terminal:resize', (event, size) => actOnPane(event, 'terminalResize', size))
+    ipcMain.on('terminal:copy', (event, text) => actOnPane(event, 'copySelection', text))
+    ipcMain.on('terminal:paste', (event, paste) => actOnPane(event, 'pasteFromTerminal', paste))
 
     // From the shared microphone window. Ready and audio drive the one shared
     // engine; a denial is reported into whichever Session is listening.
@@ -139,7 +208,13 @@ function main() {
     // global, so every open window is refreshed.
     const connectionState = (event) => {
       const state = senderSession(event)?.actions.state() ?? {}
-      return { hooks: Boolean(state.hooksInstalled), config: Boolean(state.claudeApplied) }
+      return {
+        hooks: Boolean(state.hooksInstalled),
+        config: Boolean(state.claudeApplied),
+        stale: Boolean(state.hooksStale),
+        elsewhere: typeof state.hooksElsewhere === 'string' ? state.hooksElsewhere : null,
+        problem: typeof state.connectionProblem === 'string' ? state.connectionProblem : null,
+      }
     }
     ipcMain.handle('hooks:state', (event) => {
       actOn(event, 'refreshHookState')

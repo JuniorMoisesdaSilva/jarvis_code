@@ -117,12 +117,7 @@ tray.setToolTip('Jarvis')
 ```
 
 On Windows the tray wants a PNG (not an SVG) — use the 32px one, which the
-system scales down to 16 when it needs to. On macOS, mark it as a template so
-the icon follows the light or dark bar:
-
-```js
-trayIcon.setTemplateImage(true)  // use the mono PNG, not the coloured one
-```
+system scales down to 16 when it needs to.
 
 To show that it is listening, swap the tray icon rather than flashing a window:
 

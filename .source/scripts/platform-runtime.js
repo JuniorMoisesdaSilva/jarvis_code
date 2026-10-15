@@ -1,20 +1,12 @@
 'use strict'
 
-// Electron's own binary, one per platform, in that platform's compartment.
+// Electron's own binary, in the `Windows/` compartment.
 //
-// `node_modules` is one tree seen by two machines (scripts/native-binaries.js
-// says why, and puts back the compiled packages npm leaves out). That trick
-// works because every compiled package publishes one folder per platform and
-// the loaders pick their own. Electron does not: it unpacks into a single
-// `node_modules/electron/dist`, so the tree carries whichever machine installed
-// last, and on the other machine `npm start` finds a Mac binary on Windows, or
-// the reverse, and cannot start the app at all.
-//
-// So the runtime is not kept in the tree. It is fetched into `Windows/` or
-// `macOS/` — the compartment that already belongs to one platform and is
-// already outside Git — and `npm start` runs the one for the machine it is on.
-// Both can sit in the folder at once without touching each other, which is the
-// whole point: the folder is synchronised, and a shared path is what fights.
+// The runtime `npm start` opens the app with is not the one npm unpacks into
+// `node_modules/electron/dist`. It is fetched into `Windows/electron` — a
+// compartment already outside Git, and one `npm install` never touches — so
+// reinstalling the dependencies, or a sync client half-way through rewriting
+// `node_modules`, cannot leave the app with no runtime to start on.
 //
 // The version is read from the lockfile rather than written here, so upgrading
 // Electron stays a matter of changing one dependency.
@@ -28,21 +20,14 @@ const { findFolderRoot } = require('../src/core/folder')
 const ROOT = path.join(__dirname, '..')
 const LOCK = path.join(ROOT, 'package-lock.json')
 
-/** The compartment this platform's pieces belong in, and what it is called there. */
-const COMPARTMENT = process.platform === 'win32' ? 'Windows' : 'macOS'
+/** The compartment the runtime belongs in. */
+const COMPARTMENT = 'Windows'
 
 /** Somewhere to land the archive that is not the folder being filled. */
 const STAGING = path.join(os.tmpdir(), 'jarvis-platform-runtime')
 
-/**
- * Where inside the unpacked release the thing that actually starts lives. On
- * Windows it is the executable itself; on a Mac the release is an app bundle
- * and the binary sits four levels inside it.
- */
-const EXECUTABLE =
-  process.platform === 'win32'
-    ? 'electron.exe'
-    : path.join('Electron.app', 'Contents', 'MacOS', 'Electron')
+/** The executable at the top of the unpacked release. */
+const EXECUTABLE = 'electron.exe'
 
 function folderRoot() {
   const root = findFolderRoot(ROOT, (candidate) => fs.existsSync(candidate))

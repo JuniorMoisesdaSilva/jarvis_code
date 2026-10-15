@@ -9,6 +9,8 @@ import {
   UnreadableSettingsError,
   EVENTS,
   MARKER,
+  APPROVE_FLAG,
+  PLAN_TOOL,
 } from '../src/core/hook-installer.js'
 
 // This is the only place in Jarvis that writes to a file the user owns, so it is
@@ -40,9 +42,13 @@ function readSettings() {
   return JSON.parse(fs.readFileSync(settingsFile, 'utf8'))
 }
 
+/** The listening hooks on an event: every group but the plan tool's matched approval. */
+function listenersFor(event) {
+  return readSettings().hooks[event].filter((group) => !('matcher' in group))
+}
+
 function commandsFor(event) {
-  const groups = readSettings().hooks[event]
-  return groups.flatMap((group) => group.hooks.map((each) => each.command))
+  return listenersFor(event).flatMap((group) => group.hooks.map((each) => each.command))
 }
 
 describe('preserving what belongs to the user', () => {
@@ -145,8 +151,9 @@ describe('installing and removing', () => {
     installer().install()
 
     for (const event of EVENTS) {
-      expect(readSettings().hooks[event]).toHaveLength(1)
+      expect(listenersFor(event)).toHaveLength(1)
     }
+    expect(readSettings().hooks.PreToolUse).toHaveLength(2)
   })
 
   it('replaces the old hook when the app moves', () => {
@@ -250,38 +257,24 @@ describe('the command Claude Code is told to run', () => {
 })
 
 // The launcher is written into the folder Jarvis is carried in, and that folder
-// is usually inside OneDrive or iCloud. Two machines writing one name there is
+// is usually inside OneDrive. Two machines writing one name there is
 // two machines overwriting each other: the second to sync wins, and the first is
 // left running an executable under a user folder it does not have — so every
 // event Claude Code reports fails, with nothing on screen to say why.
 describe('what the launcher is called', () => {
   it('carries the machine, so two of them never share a file', () => {
-    expect(launcherName({ platform: 'win32', machine: 'WORK-L07' })).toBe('hook-relay-WORK-L07.cmd')
-    expect(launcherName({ platform: 'win32', machine: 'HOME-PC' })).toBe('hook-relay-HOME-PC.cmd')
-  })
-
-  it('is a batch file on Windows and a shell script anywhere else', () => {
-    expect(launcherName({ platform: 'darwin', machine: 'studio' })).toBe('hook-relay-studio.sh')
-    expect(launcherName({ platform: 'linux', machine: 'studio' })).toBe('hook-relay-studio.sh')
-  })
-
-  it('drops what a Mac adds to its own name', () => {
-    // `os.hostname()` on a Mac answers with the network name, and the machine is
-    // the same machine on any network.
-    expect(launcherName({ platform: 'darwin', machine: 'Studio-MacBook-Pro.local' })).toBe(
-      'hook-relay-Studio-MacBook-Pro.sh',
-    )
+    expect(launcherName({ machine: 'WORK-L07' })).toBe('hook-relay-WORK-L07.cmd')
+    expect(launcherName({ machine: 'HOME-PC' })).toBe('hook-relay-HOME-PC.cmd')
   })
 
   it('keeps the name to what a file name can hold', () => {
-    expect(launcherName({ platform: 'win32', machine: "Alex's PC (work)" })).toBe(
-      'hook-relay-Alex-s-PC-work.cmd',
-    )
+    expect(launcherName({ machine: "Alex's PC (work)" })).toBe('hook-relay-Alex-s-PC-work.cmd')
+    expect(launcherName({ machine: 'desk.corp.example' })).toBe('hook-relay-desk-corp-example.cmd')
   })
 
   it('falls back to the plain name when the machine will not say', () => {
-    expect(launcherName({ platform: 'win32', machine: '' })).toBe('hook-relay.cmd')
-    expect(launcherName({ platform: 'darwin', machine: null })).toBe('hook-relay.sh')
+    expect(launcherName({ machine: '' })).toBe('hook-relay.cmd')
+    expect(launcherName({ machine: null })).toBe('hook-relay.cmd')
   })
 })
 
@@ -375,11 +368,283 @@ describe('bringing an out-of-date hook up to date', () => {
     // Not something Jarvis wrote. Guessing at it would mean editing a file that
     // is not ours in a shape nobody here understands.
     writeSettings(
-      `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": ${JSON.stringify(OLD)}}]}], "PreToolUse": "surprise"}}`,
+      `{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": ${JSON.stringify(OLD)}}]}], "Notification": "surprise"}}`,
     )
 
     installer().upgrade()
 
-    expect(readSettings().hooks.PreToolUse).toBe('surprise')
+    expect(readSettings().hooks.Notification).toBe('surprise')
+  })
+})
+
+// The Deck hears every tool call, and a tool call is the one thing Claude Code
+// does most often. So the nine events it listens to are registered as
+// asynchronous: Claude Code starts the relay and goes on without waiting for it.
+// Four of the five Jarvis had before keep their shape exactly — Stop and
+// PermissionRequest carry what is read aloud, and nothing about them changes.
+// The fifth, SessionEnd, is asynchronous too: waited for, it was cancelled by a
+// Claude Code on its way out. ADR 0033.
+describe('listening to every tool call without making Claude Code wait', () => {
+  const FIVE = ['SessionStart', 'Stop', 'PermissionRequest', 'UserPromptSubmit', 'SessionEnd']
+  const NINE = [
+    'PreToolUse',
+    'PostToolUse',
+    'PostToolUseFailure',
+    'PermissionDenied',
+    'SubagentStart',
+    'SubagentStop',
+    'PreCompact',
+    'PostCompact',
+    'StopFailure',
+  ]
+
+  function hooksFor(event) {
+    return listenersFor(event).flatMap((group) => group.hooks)
+  }
+
+  it('listens for the five it had and the nine the Deck reads', () => {
+    expect([...EVENTS].sort()).toEqual([...FIVE, ...NINE].sort())
+  })
+
+  it('registers the nine as asynchronous', () => {
+    installer().install()
+    for (const event of NINE) {
+      expect(hooksFor(event)).toEqual([{ type: 'command', command: HELPER, async: true }])
+    }
+  })
+
+  const WAITED = FIVE.filter((event) => event !== 'SessionEnd')
+
+  it('leaves the four that are waited for exactly as they were', () => {
+    installer().install()
+    for (const event of WAITED) {
+      expect(hooksFor(event)).toEqual([{ type: 'command', command: HELPER }])
+    }
+  })
+
+  it('registers SessionEnd as asynchronous, so a Claude Code leaving cannot cancel it', () => {
+    installer().install()
+    expect(hooksFor('SessionEnd')).toEqual([{ type: 'command', command: HELPER, async: true }])
+  })
+
+  it('sees a SessionEnd that is still waited for as out of date, and brings it up', () => {
+    installer().install()
+    const settings = readSettings()
+    settings.hooks.SessionEnd = [{ hooks: [{ type: 'command', command: HELPER }] }]
+    writeSettings(JSON.stringify(settings))
+
+    expect(installer().isStale()).toBe(true)
+    installer().upgrade()
+    expect(hooksFor('SessionEnd')).toEqual([{ type: 'command', command: HELPER, async: true }])
+  })
+
+  function installTheFiveOnly() {
+    const hooks = Object.fromEntries(
+      FIVE.map((event) => [event, [{ hooks: [{ type: 'command', command: HELPER }] }]]),
+    )
+    writeSettings(JSON.stringify({ hooks }))
+  }
+
+  it('sees an install made before the Deck as out of date, and brings it up', () => {
+    installTheFiveOnly()
+    expect(installer().isInstalled()).toBe(false)
+    expect(installer().isStale()).toBe(true)
+
+    expect(installer().upgrade()).toBe(true)
+
+    expect(installer().isInstalled()).toBe(true)
+    for (const event of NINE) expect(hooksFor(event)[0].async).toBe(true)
+  })
+
+  it('sees one of the nine registered without the flag as out of date', () => {
+    installer().install()
+    const settings = readSettings()
+    settings.hooks.PreToolUse = [{ hooks: [{ type: 'command', command: HELPER }] }]
+    writeSettings(JSON.stringify(settings))
+
+    expect(installer().isInstalled()).toBe(false)
+    expect(installer().isStale()).toBe(true)
+    installer().upgrade()
+    expect(hooksFor('PreToolUse')).toEqual([{ type: 'command', command: HELPER, async: true }])
+  })
+
+  it('sees one of the four made asynchronous as out of date', () => {
+    // An answer read aloud must arrive in order.
+    installer().install()
+    const settings = readSettings()
+    settings.hooks.Stop = [{ hooks: [{ type: 'command', command: HELPER, async: true }] }]
+    writeSettings(JSON.stringify(settings))
+
+    expect(installer().isStale()).toBe(true)
+  })
+
+  it('takes all fourteen away on Disconnect', () => {
+    writeSettings('{"model": "opus"}')
+    installer().install()
+    installer().uninstall()
+    expect(readSettings()).toEqual({ model: 'opus' })
+  })
+})
+
+// Jarvis's own plan tool is approved by Jarvis: one PreToolUse group, matched
+// to that tool and nothing else, waited for, answering "allow". It is one of
+// ours like the rest — installed, kept current and taken away with them.
+// ADR 0034.
+describe('approving the plan tool, and nothing else', () => {
+  const APPROVAL = `${HELPER} ${APPROVE_FLAG}`
+
+  function approvals() {
+    return (readSettings().hooks?.PreToolUse ?? []).filter((group) => 'matcher' in group)
+  }
+
+  it('is matched to the plan tool alone', () => {
+    installer().install()
+    expect(PLAN_TOOL).toBe('mcp__jarvis__update_plan')
+    expect(approvals()).toEqual([
+      { matcher: '^mcp__jarvis__update_plan$', hooks: [{ type: 'command', command: APPROVAL }] },
+    ])
+    expect(new RegExp(approvals()[0].matcher).test('mcp__jarvis__update_plan')).toBe(true)
+    expect(new RegExp(approvals()[0].matcher).test('mcp__jarvis__update_plan_x')).toBe(false)
+    expect(new RegExp(approvals()[0].matcher).test('Bash')).toBe(false)
+  })
+
+  it('is waited for, since its answer is the approval', () => {
+    installer().install()
+    expect(approvals()[0].hooks[0].async).toBeUndefined()
+  })
+
+  it('carries the marker, so it is recognised as ours', () => {
+    expect(APPROVAL).toContain(MARKER)
+  })
+
+  it('is part of being installed, and current once there', () => {
+    installer().install()
+    expect(installer().isInstalled()).toBe(true)
+    expect(installer().isStale()).toBe(false)
+  })
+
+  it('sees an install made before the plan tool as out of date, and brings it up', () => {
+    installer().install()
+    const settings = readSettings()
+    settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter((group) => !('matcher' in group))
+    writeSettings(JSON.stringify(settings))
+
+    expect(installer().isInstalled()).toBe(false)
+    expect(installer().isStale()).toBe(true)
+    expect(installer().upgrade()).toBe(true)
+    expect(approvals()).toHaveLength(1)
+    expect(installer().isInstalled()).toBe(true)
+  })
+
+  it('upgrades an approval naming an older command, keeping one', () => {
+    createInstaller({ command: '"C:\\Old\\hook.cmd" --jarvis-hook', file: settingsFile }).install()
+    expect(installer().upgrade()).toBe(true)
+    expect(approvals()).toEqual([
+      { matcher: '^mcp__jarvis__update_plan$', hooks: [{ type: 'command', command: APPROVAL }] },
+    ])
+  })
+
+  it('sees an approval matched more widely as out of date', () => {
+    installer().install()
+    const settings = readSettings()
+    settings.hooks.PreToolUse = settings.hooks.PreToolUse.map((group) =>
+      'matcher' in group ? { ...group, matcher: '.*' } : group,
+    )
+    writeSettings(JSON.stringify(settings))
+    expect(installer().isStale()).toBe(true)
+    installer().upgrade()
+    expect(approvals()[0].matcher).toBe('^mcp__jarvis__update_plan$')
+  })
+
+  it("keeps another program's matched hook on the same event", () => {
+    const theirs = { matcher: 'Bash', hooks: [{ type: 'command', command: 'C:\\other\\guard.exe' }] }
+    writeSettings(JSON.stringify({ hooks: { PreToolUse: [theirs] } }))
+    installer().install()
+    expect(approvals()).toContainEqual(theirs)
+    installer().uninstall()
+    expect(readSettings().hooks.PreToolUse).toEqual([theirs])
+  })
+
+  it('is taken away on Disconnect with the rest', () => {
+    writeSettings('{"model": "opus"}')
+    installer().install()
+    installer().uninstall()
+    expect(readSettings()).toEqual({ model: 'opus' })
+  })
+})
+
+// Two Jarvis folders on one machine — the one the user runs and a checkout, say
+// — each write the same hooks naming their own launcher. Hooks the other one
+// wrote, current in every way but the folder they name, are not "out of date":
+// that Jarvis is connected and working, and nothing here should take it over
+// without being asked. Connect still can, when pressed. Hooks of an older shape
+// are out of date wherever they point, and so are hooks naming a launcher that
+// is no longer there — the folder they name has moved or gone.
+describe('hooks another Jarvis folder wrote', () => {
+  let otherFolder
+  let otherLauncher
+  let otherCommand
+
+  beforeEach(() => {
+    otherFolder = path.join(directory, 'Other Jarvis')
+    otherLauncher = path.join(otherFolder, '.jarvis-data', 'hook-relay-M.cmd')
+    fs.mkdirSync(path.dirname(otherLauncher), { recursive: true })
+    fs.writeFileSync(otherLauncher, '@echo off\r\n')
+    otherCommand = helperCommandLine({ launcher: otherLauncher })
+  })
+
+  it('are not out of date when they are current: they name the Jarvis they belong to', () => {
+    installer(otherCommand).install()
+    const before = fs.readFileSync(settingsFile, 'utf8')
+
+    expect(installer().isInstalled()).toBe(false)
+    expect(installer().isStale()).toBe(false)
+    expect(installer().elsewhere()).toBe(otherFolder)
+    expect(installer().upgrade()).toBe(false)
+    expect(fs.readFileSync(settingsFile, 'utf8')).toBe(before)
+  })
+
+  it('give way to this one when Connect is pressed', () => {
+    installer(otherCommand).install()
+
+    installer().install()
+
+    expect(installer().isInstalled()).toBe(true)
+    expect(installer().elsewhere()).toBeNull()
+    for (const event of EVENTS) expect(commandsFor(event)).toEqual([HELPER])
+  })
+
+  it('are out of date when they are of an older shape, wherever they point', () => {
+    const hooks = { Stop: [{ hooks: [{ type: 'command', command: otherCommand }] }] }
+    writeSettings(JSON.stringify({ hooks }))
+
+    expect(installer().elsewhere()).toBeNull()
+    expect(installer().isStale()).toBe(true)
+  })
+
+  it('are out of date when the launcher they name is gone', () => {
+    installer(otherCommand).install()
+    fs.rmSync(otherLauncher)
+
+    expect(installer().elsewhere()).toBeNull()
+    expect(installer().isStale()).toBe(true)
+  })
+
+  it('name the folder itself, not its data folder, nor a data folder kept elsewhere', () => {
+    installer(otherCommand).install()
+    expect(installer().elsewhere()).toBe(otherFolder)
+
+    const kept = path.join(directory, 'kept', 'hook-relay-M.cmd')
+    fs.mkdirSync(path.dirname(kept), { recursive: true })
+    fs.writeFileSync(kept, '')
+    installer(helperCommandLine({ launcher: kept })).install()
+    expect(installer().elsewhere()).toBe(path.dirname(kept))
+  })
+
+  it('are not somewhere else when they are this Jarvis’s own', () => {
+    installer().install()
+    expect(installer().elsewhere()).toBeNull()
+    writeSettings('{"model": "opus"}')
+    expect(installer().elsewhere()).toBeNull()
   })
 })

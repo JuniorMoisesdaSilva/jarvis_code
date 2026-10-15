@@ -1,0 +1,94 @@
+{
+  "shell": "powershell.exe",
+  "language": "pt-BR",
+  "terminalFontSize": 14,
+  "theme": "iron",
+  "panelPosition": "right",
+  "panelCollapsed": false,
+  "railWidth": 316,
+  "bandHeight": 148,
+  "autoRead": true,
+  "model": "medium",
+  "speechRate": 4,
+  "welcomeSeen": false,
+  "shortcuts": [
+    {
+      "id": "built-in-claude",
+      "label": "Claude",
+      "command": "claude",
+      "submits": true
+    },
+    {
+      "id": "built-in-resume",
+      "label": "Resume",
+      "command": "/resume",
+      "submits": true
+    },
+    {
+      "id": "built-in-update",
+      "label": "Update",
+      "command": "claude update",
+      "submits": true
+    },
+    {
+      "id": "built-in-exit",
+      "label": "Exit",
+      "command": "/exit",
+      "submits": false
+    },
+    {
+      "id": "new-1788670214172",
+      "label": "Commit",
+      "command": "commit + push to main",
+      "submits": true
+    },
+    {
+      "id": "new-1789341132684",
+      "label": "Compact",
+      "command": "/compact",
+      "submits": true
+    },
+    {
+      "id": "new-1790647127911",
+      "label": "Low Review",
+      "command": "/code-review low",
+      "submits": true
+    },
+    {
+      "id": "new-1790658837311",
+      "label": "Full Review",
+      "command": "/code-review",
+      "submits": true
+    },
+    {
+      "id": "new-1790658870545",
+      "label": "Auto Effort",
+      "command": "/effort auto",
+      "submits": true
+    }
+  ],
+  "skills": [
+    {
+      "id": "new-1788670174278",
+      "label": "Maestro",
+      "command": "/maestro",
+      "submits": false
+    },
+    {
+      "id": "new-1789341151363",
+      "label": "Grill Me",
+      "command": "/grill-me",
+      "submits": false
+    },
+    {
+      "id": "new-1790828868877",
+      "label": "Restate",
+      "command": "Reformule com suas próprias palavras quais você acha que são os meus objetivos e qual é o problema que estou tentando resolver.",
+      "submits": true
+    }
+  ],
+  "voices": {
+    "pt-BR": "jarvis:pt_BR-faber-medium",
+    "en-US": "jarvis:en_US-amy-medium"
+  }
+}

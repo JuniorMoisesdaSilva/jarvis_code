@@ -15,131 +15,163 @@
       <button id="close" class="btn btn-primary" type="button">Done</button>
     </header>
 
-    <main class="sheet-body">
-      <section>
-        <div class="label">Claude Code</div>
-        <div class="card card-marked">
-          <div class="hooks-line" id="hooks-state">
-            <i class="ph ph-plugs-connected" aria-hidden="true"></i><span id="hooks-text">Checking…</span>
+    <!-- One view, four columns (ADR 0036). A column scrolls on its own only in a
+         window too short for it; at 1366 by 768 none does. -->
+    <main class="sheet-grid">
+      <div class="sheet-col">
+        <section>
+          <div class="label">Appearance</div>
+          <div class="field">
+            <label id="theme-label">Theme</label>
+            <div class="seg seg-wide" id="theme" role="radiogroup" aria-labelledby="theme-label"></div>
           </div>
-          <p class="note">
-            This teaches Claude Code to report to Jarvis and to sound like it — the hooks, the
-            spoken-summary voice style, the two-line status line, and the model — writing them into
-            your global Claude Code configuration and keeping a copy first. Disconnecting puts it
-            all back the way it was.
-          </p>
+          <div class="field">
+            <label id="language-label">Answer language</label>
+            <div class="seg seg-wide" id="language" role="radiogroup" aria-labelledby="language-label"></div>
+          </div>
+        </section>
+
+        <section>
+          <div class="label">Text sizes</div>
+          <div class="sizes" id="sizes"></div>
+          <p class="note">Each applies as you type it; one out of range is brought back inside it when you leave the box.</p>
+        </section>
+
+        <section>
+          <div class="label">Panel side</div>
+          <div class="sides" id="sides" role="radiogroup" aria-label="Panel side"></div>
+        </section>
+      </div>
+
+      <div class="sheet-col">
+        <section>
+          <div class="label">Spine buttons</div>
+          <p class="note">In the Spine's order — drag them on the Spine. Untick one to hide it; its Part goes off.</p>
+          <div class="spine-list" id="spine-list"></div>
+        </section>
+
+        <section>
+          <div class="label">Claude Code</div>
+          <div class="card card-marked">
+            <div class="hooks-line" id="hooks-state">
+              <i class="ph ph-plugs-connected" aria-hidden="true"></i><span id="hooks-text">Checking…</span>
+            </div>
+            <p class="note">
+              Teaches Claude Code to report to Jarvis and to sound like it — the hooks, the
+              spoken-summary style, the status line and the model — keeping a copy of your
+              configuration first. Disconnecting puts it all back.
+            </p>
+            <div class="actions">
+              <button id="install-hooks" class="btn btn-secondary btn-tiny" type="button">Connect</button>
+              <button id="remove-hooks" class="btn btn-secondary btn-tiny" type="button">Disconnect</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="sheet-col">
+        <section>
+          <div class="label">Command buttons</div>
+          <div class="field">
+            <label id="command-columns-label">Columns in the panel</label>
+            <div class="seg seg-wide" id="command-columns" role="radiogroup" aria-labelledby="command-columns-label"></div>
+          </div>
+          <table class="table rows">
+            <thead>
+              <tr>
+                <th title="Drag a row by its handle to reorder">#</th>
+                <th>Icon</th>
+                <th>Button</th>
+                <th>Command</th>
+                <th class="middle" title="Whether Enter is pressed afterwards">Enter</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="shortcut-rows"></tbody>
+          </table>
           <div class="actions">
-            <button id="install-hooks" class="btn btn-secondary btn-tiny" type="button">
-              Connect
-            </button>
-            <button id="remove-hooks" class="btn btn-secondary btn-tiny" type="button">
-              Disconnect
-            </button>
+            <button id="add-shortcut" class="btn btn-secondary btn-tiny" type="button">Add a button</button>
+            <button id="reset-shortcuts" class="btn btn-ghost btn-tiny" type="button">Back to the defaults</button>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section>
-        <div class="label">Terminal</div>
-        <div class="field">
-          <label for="shell">Shell to open for a new session</label>
-          <input id="shell" class="input" type="text" spellcheck="false" autocomplete="off" />
-        </div>
-        <p class="note">
-          <code>powershell.exe</code> by default. <code>bash.exe</code> and
-          <code>cmd.exe</code> also work.
-        </p>
-        <div class="field">
-          <label for="terminal-font">Text size <span class="value" id="terminal-font-value">13.5</span></label>
-          <input id="terminal-font" class="range" type="range" min="9" max="24" step="0.5" />
-        </div>
-        <p class="note">
-          Applies straight away. Larger text means fewer columns, so the shell is
-          told the new shape as you let go of the slider.
-        </p>
-      </section>
+      <div class="sheet-col">
+        <section>
+          <div class="label">Skills</div>
+          <div class="field">
+            <label id="skill-columns-label">Columns in the panel</label>
+            <div class="seg seg-wide" id="skill-columns" role="radiogroup" aria-labelledby="skill-columns-label"></div>
+          </div>
+          <table class="table rows">
+            <thead>
+              <tr>
+                <th title="Drag a row by its handle to reorder">#</th>
+                <th>Icon</th>
+                <th>Skill</th>
+                <th>Command</th>
+                <th class="middle" title="Whether Enter is pressed afterwards">Enter</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="skill-rows"></tbody>
+          </table>
+          <div class="actions">
+            <button id="add-skill" class="btn btn-secondary btn-tiny" type="button">Add a skill</button>
+          </div>
+        </section>
 
-      <section>
-        <div class="label">Dictation</div>
-        <div class="field" id="model-field">
-          <label id="model-label">Speech model</label>
-          <div class="seg seg-wide" id="model" role="radiogroup" aria-labelledby="model-label"></div>
-        </div>
-        <p class="note" id="model-note"></p>
-        <p class="note">
-          Runs on your machine, with nothing sent anywhere.
-          <a href="#" id="mic-settings"></a>
-        </p>
-      </section>
+        <section>
+          <div class="label">Reading aloud</div>
+          <div class="two">
+            <div class="field">
+              <label for="voice-pt">Portuguese voice</label>
+              <select id="voice-pt" class="input"></select>
+            </div>
+            <div class="field">
+              <label for="voice-en">English voice</label>
+              <select id="voice-en" class="input"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="rate">Speed <span class="value" id="rate-value">normal</span></label>
+            <input id="rate" class="range" type="range" min="-10" max="10" step="1" />
+          </div>
+          <p class="note" id="voice-note"><span id="voice-note-text"></span></p>
+        </section>
 
-      <section>
-        <div class="label">Reading aloud</div>
-        <div class="field">
-          <label for="voice-pt">Portuguese voice</label>
-          <select id="voice-pt" class="input"></select>
-        </div>
-        <div class="field">
-          <label for="voice-en">English voice</label>
-          <select id="voice-en" class="input"></select>
-        </div>
-        <div class="field">
-          <label for="rate">Speed <span class="value" id="rate-value">normal</span></label>
-          <input id="rate" class="range" type="range" min="-10" max="10" step="1" />
-        </div>
-        <p class="note" id="voice-note">
-          <span id="voice-note-text"></span>
-        </p>
-      </section>
-
-      <section>
-        <div class="label">Command buttons</div>
-        <table class="table" id="shortcuts">
-          <thead>
-            <tr>
-              <th>Button</th>
-              <th>Command</th>
-              <th class="middle" title="Whether Enter is pressed afterwards">Enter</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="shortcut-rows"></tbody>
-        </table>
-        <div class="actions">
-          <button id="add-shortcut" class="btn btn-secondary btn-tiny" type="button">
-            Add a button
-          </button>
-          <button id="reset-shortcuts" class="btn btn-ghost btn-tiny" type="button">
-            Back to the defaults
-          </button>
-        </div>
-      </section>
-
-      <section>
-        <div class="label">Skills</div>
-        <p class="note">
-          A block of its own in the rail. Give each skill a name and the command that runs it
-          (say <code>/wayfinder</code>). Clicking a skill types its command into the input line
-          and leaves the Enter to you, so you can add an argument first.
-        </p>
-        <table class="table" id="skills">
-          <thead>
-            <tr>
-              <th>Skill</th>
-              <th>Command</th>
-              <th class="middle" title="Whether Enter is pressed afterwards">Enter</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="skill-rows"></tbody>
-        </table>
-        <div class="actions">
-          <button id="add-skill" class="btn btn-secondary btn-tiny" type="button">
-            Add a skill
-          </button>
-        </div>
-      </section>
+        <section>
+          <div class="label">Shell and dictation</div>
+          <div class="field">
+            <label for="shell">Shell to open for a new session</label>
+            <input id="shell" class="input" type="text" spellcheck="false" autocomplete="off" />
+          </div>
+          <div class="field" id="model-field">
+            <label id="model-label">Speech model</label>
+            <div class="seg seg-wide" id="model" role="radiogroup" aria-labelledby="model-label"></div>
+          </div>
+          <p class="note"><span id="model-note"></span>
+            Runs on your machine, with nothing sent anywhere.
+            <a href="#" id="mic-settings">Open the microphone switch in Windows settings</a>
+          </p>
+        </section>
+      </div>
     </main>
 
+    <!-- The icon picker, one for the whole sheet, opened by a row's icon button. -->
+    <div class="picker" id="picker" role="dialog" aria-labelledby="picker-title" hidden>
+      <div class="picker-head">
+        <span id="picker-title">Icon</span>
+        <button id="picker-close" class="btn btn-ghost btn-tiny" type="button" title="Close">
+          <i class="ph ph-x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="picker-grid" id="picker-grid"></div>
+    </div>
+
+    <script src="../core/deck-chips.js"></script>
+    <script src="../core/button-look.js"></script>
+    <script src="../core/spine.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

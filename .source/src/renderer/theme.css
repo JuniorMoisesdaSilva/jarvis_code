@@ -104,6 +104,25 @@
   --muted-strong: color-mix(in srgb, var(--color-text) 72%, transparent);
   /* The registration marks at the corners of every framed object. */
   --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+  /* The Deck's permission verdicts, one colour each, and the warning a block
+     raises when it needs you — a permission waiting is the first. */
+  --verdict-rule: #749dc4;
+  --verdict-user: #d6ebff;
+  --verdict-auto: #7fc8b4;
+  --verdict-waiting: #f0c060;
+  --verdict-denied-user: #ef8a74;
+  --verdict-denied-auto: #d48ac0;
+  --warning: var(--verdict-waiting);
+  /* A subagent that failed or was cut short. */
+  --alarm: var(--verdict-denied-user);
+  /* Each Deck block's own colour, for its chip in a band. Eight hues apart
+     from one another and from the warning and the alarm, which a chip turns to
+     when its block needs you. */
+  --deck-plan: #f2a65a;
+  --deck-gauge: #8aa8f5;
+  --deck-agents: #b4d86a;
+  --deck-loops: #f095c4;
+  --deck-events: #6fd0ea;
 }
 
 [data-theme='light'] {
@@ -130,6 +149,20 @@
   --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
   --muted-strong: color-mix(in srgb, var(--color-text) 70%, transparent);
   --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --verdict-rule: #749dc4;
+  --verdict-user: #2c455d;
+  --verdict-auto: #2f8f7a;
+  --verdict-waiting: #b07a10;
+  --verdict-denied-user: #c0533f;
+  --verdict-denied-auto: #9c3f86;
+  --warning: var(--verdict-waiting);
+  /* A subagent that failed or was cut short. */
+  --alarm: var(--verdict-denied-user);
+  --deck-plan: #b0601a;
+  --deck-gauge: #3f5fc4;
+  --deck-agents: #5f8a1c;
+  --deck-loops: #b8457f;
+  --deck-events: #1a7fa0;
 }
 
 /* Iron Man — the palette Jarvis always had, carried into Industry's geometry:
@@ -168,6 +201,20 @@
   --muted: color-mix(in srgb, var(--color-text) 55%, transparent);
   --muted-strong: color-mix(in srgb, var(--color-text) 72%, transparent);
   --mark: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --verdict-rule: #8a641f;
+  --verdict-user: #f0cd7f;
+  --verdict-auto: #9fc7a8;
+  --verdict-waiting: #ff9f43;
+  --verdict-denied-user: #ef5a45;
+  --verdict-denied-auto: #d07ab8;
+  --warning: var(--verdict-waiting);
+  /* A subagent that failed or was cut short. */
+  --alarm: var(--verdict-denied-user);
+  --deck-plan: #f0b070;
+  --deck-gauge: #9db4f0;
+  --deck-agents: #bcd870;
+  --deck-loops: #f09ac8;
+  --deck-events: #7fd4ea;
 }
 
 *,

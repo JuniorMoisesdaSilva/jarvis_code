@@ -43,21 +43,15 @@ function newAnswerNotice(language) {
 }
 
 /**
- * The message Jarvis types into the terminal to bring Claude Code up to speed
- * from the project's previous conversation logs. Content, not interface, so it
- * is written in the language being spoken; the files are named for Claude to
- * read itself rather than pasted, so any length is fine. Not submitted — the
- * user reads it and presses Enter.
+ * The message the Memory button sends Claude Code, so it catches up from the
+ * project's previous conversation logs. Content, not interface, so it is written
+ * in the language being spoken. It names the folder rather than the files:
+ * Claude Code finds the latest ones itself.
  */
-function recallConversationsPrompt(language, relativePaths) {
-  const files = relativePaths.map((each) => `\`${each}\``).join(', ')
+function recallConversationsPrompt(language) {
   return language === PORTUGUESE
-    ? `Antes de continuarmos, leia os registros das nossas conversas anteriores ` +
-        `neste projeto para relembrar o que já foi feito: ${files}. Em seguida, ` +
-        `resuma em poucas linhas onde paramos.`
-    : `Before we carry on, read the logs of our previous conversations in this ` +
-        `project to catch up on what we have done: ${files}. Then sum up in a few ` +
-        `lines where we left off.`
+    ? 'Leia minhas últimas conversas na pasta .jarvis para ter mais contexto.'
+    : 'Read my latest conversations in the .jarvis folder for more context.'
 }
 
 /**

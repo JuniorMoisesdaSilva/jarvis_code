@@ -11,7 +11,7 @@ const language = require('./language')
 const { Sound, EntryKind, entry, effect } = require('./effects')
 const filter = require('./speech-text-filter')
 const announcement = require('./permission-announcement')
-const { samePath } = require('./paths')
+const { within } = require('./paths')
 
 /** The app's observable state. The Panel reads from here; the core writes it. */
 function initialState(overrides = {}) {
@@ -72,15 +72,15 @@ class JarvisCore {
   /**
    * The single entry point for events coming from the tool.
    *
-   * An event is answered only when it comes from the folder of the project open
-   * in the Panel. Without that filter Jarvis would adopt the first session that
+   * An event is answered only when it comes from the project open in the Panel
+   * — its folder or one inside it. Without that filter Jarvis would adopt the first session that
    * spoke — in practice, reading aloud the answers of a project it cannot write
    * to, while ignoring the session it opened itself.
    */
   receive(incoming) {
     const { projectPath } = this.state
     if (projectPath === null) return []
-    if (!samePath(incoming.workingDirectory, projectPath)) return []
+    if (!within(incoming.workingDirectory, projectPath)) return []
     if (this.#fromOwnTerminal(incoming)) this.#follow(incoming.event)
     return this.handleAgentEvent(incoming.event)
   }

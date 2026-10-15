@@ -11,11 +11,13 @@
 // ./maestro, which asks the same machine the same kind of question.
 
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { app } = require('electron')
-const { createConfigurator, UnreadableSettingsError } = require('../core/claude-config')
+const { createConfigurator, localizedStyle, UnreadableSettingsError } = require('../core/claude-config')
 const platform = require('../core/platform')
 const languages = require('../core/language')
+const planTool = require('../core/plan-tool')
 
 /**
  * The Brain compartment, at the folder's root rather than inside the app.
@@ -37,7 +39,10 @@ const OUTPUT_STYLE = 'Resumo leigo'
 
 /**
  * The only Claude Code settings the carried personality is allowed to set.
- * A deliberately short list: the model is behaviour, not a secret. Anything
+ * A deliberately short list: the model and the view are behaviour, not
+ * secrets. The view is `focus`, so the screen shows the conversation and not
+ * the diffs and commands behind it — the Resumo leigo style keeps code out of
+ * the replies, and this keeps it out of the rest of the screen. Anything
  * else in LAYOUT.json — a stray `permissions` block, an `env` with a token in
  * it — is ignored rather than trusted onto someone's machine.
  *
@@ -46,11 +51,28 @@ const OUTPUT_STYLE = 'Resumo leigo'
  * disagree the moment the switch was pressed, and the one the user can see has
  * to win, so the language is passed in rather than read from the file.
  */
-const PERSONALITY_KEYS = Object.freeze(['model'])
+const PERSONALITY_KEYS = Object.freeze(['model', 'viewMode'])
 
 /** The carried status line script, resolved on this disk. */
 function statusLineScript() {
   return path.join(brain(), 'LAYOUT.js')
+}
+
+/** The carried plan tool, a one-tool MCP server, resolved on this disk. */
+function planScript() {
+  return path.join(brain(), 'PLAN.js')
+}
+
+/** The name Claude Code knows the plan server by: its tool is `mcp__jarvis__update_plan`. */
+const PLAN_SERVER = planTool.SERVER
+
+/**
+ * Where Claude Code keeps the user's own MCP servers, the list `claude mcp add
+ * --scope user` writes to. It is Claude Code's state file, not its settings,
+ * which is why the plan server is registered there and not beside the hooks.
+ */
+function mcpFile() {
+  return path.join(os.homedir(), '.claude.json')
 }
 
 /** The carried style file, resolved on this disk. */
@@ -78,10 +100,9 @@ function personalityFile() {
  * another machine, or to a drive that came back under a different letter —
  * always points the status line at where the script actually is now.
  *
- * Run by Node, which both platforms have: the status line belongs to the
- * Carried personality, and that half of the folder has to behave the same
- * wherever Jarvis is plugged in. It used to be PowerShell, which meant Connect
- * on a Mac wrote a command that machine could not run.
+ * Run by Node, which every machine running Claude Code has: the status line
+ * belongs to the Carried personality, and that half of the folder has to behave
+ * the same wherever Jarvis is plugged in.
  */
 function statusLineCommand() {
   return {
@@ -145,17 +166,42 @@ function configurator(language) {
     memoryFile: memoryFile(),
     desired: desired(language),
     placements: [
-      { source: styleSource(), destination: styleDestination(), legacy: true },
+      {
+        source: styleSource(),
+        destination: styleDestination(),
+        legacy: true,
+        adopt: true,
+        render: (text) => localizedStyle(text, language === languages.PORTUGUESE),
+      },
       ...maestro.placements(),
     ],
+    // Jarvis's plan tool, which the Deck's Plan block draws. Its path is
+    // recomputed on every Connect, like the status line's.
+    mcp: { file: mcpFile(), servers: { [PLAN_SERVER]: platform.planServer(planScript()) } },
   })
+}
+
+/**
+ * At start: the style file on the host is brought up to what Brain carries,
+ * so an edit to BEHAVIOUR.md reaches Claude Code without a second Connect.
+ * Silent, like the hooks' upgrade; a machine never connected is left alone.
+ */
+function refreshPlacedFiles(language) {
+  try {
+    return configurator(language).refresh()
+  } catch {
+    return false
+  }
 }
 
 module.exports = {
   configurator,
+  refreshPlacedFiles,
   OUTPUT_STYLE,
   PERSONALITY_KEYS,
   statusLineScript,
+  planScript,
+  PLAN_SERVER,
   personalityFile,
   UnreadableSettingsError,
 }

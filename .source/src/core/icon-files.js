@@ -41,12 +41,4 @@ const APP = `jarvis-${THEME}.ico`
  */
 const TRAY = path.join('png', `jarvis-${THEME}-32.png`)
 
-/**
- * The Dock, which takes an image rather than a path and wants a big one: macOS
- * draws it at up to 128 points on a retina display and scales down cleanly from
- * 512, where scaling up from 128 shows. The mark on its plate, like the taskbar
- * — the Dock is another row of filled squares.
- */
-const DOCK = path.join('png', `jarvis-${THEME}-plate-512.png`)
-
-module.exports = { FOLDER, THEME, APP, TRAY, DOCK }
+module.exports = { FOLDER, THEME, APP, TRAY }

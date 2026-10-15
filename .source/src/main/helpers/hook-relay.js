@@ -76,17 +76,26 @@ function marked(event) {
   }
 }
 
-const received = eventOnStandardInput()
-if (received.trim() === '') leave()
-const payload = marked(received)
+/** Forwards the event on standard input to Jarvis, and leaves. */
+function relay() {
+  const received = eventOnStandardInput()
+  if (received.trim() === '') leave()
+  const payload = marked(received)
 
-const socket = net.connect(channelAddress(), () => {
-  socket.end(payload)
-})
-socket.setTimeout(PATIENCE)
-socket.on('timeout', leave)
-socket.on('error', leave)
-socket.on('close', leave)
+  const socket = net.connect(channelAddress(), () => {
+    socket.end(payload)
+  })
+  socket.setTimeout(PATIENCE)
+  socket.on('timeout', leave)
+  socket.on('error', leave)
+  socket.on('close', leave)
 
-// A connection that neither opens nor fails must not hang around either.
-setTimeout(leave, CEILING)
+  // A connection that neither opens nor fails must not hang around either.
+  setTimeout(leave, CEILING)
+}
+
+// The same launcher runs the plan tool's approval, told so by one more flag
+// (APPROVE_FLAG in src/core/hook-installer.js): that hook answers rather than
+// reports, and the answer is printed, not sent.
+if (process.argv.includes('--approve-plan')) require('./plan-approval').approve()
+else relay()

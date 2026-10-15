@@ -1,13 +1,15 @@
 /* The panel: 316 points down a side of the window, or a 148-point band along
- * one of its edges, and 52 points of icons when it is shut.
+ * one of its edges, and its Spine alone, 52 points, when it is shut.
  *
- * Four bands, in the order the hand reaches for them. The session sits on one
- * line at the top. The buttons — commands, then skills — and the settings and
- * notices behind them scroll in the middle. The microphone and the reading
- * controls are docked out of the scrolling page: they are what the panel is
- * for, so a growing list of skills must never push them off screen. Nothing is
- * behind a disclosure, because a voice assistant you have to open a drawer to
- * read is not telling you anything.
+ * Down a side, the Spine runs down the outer edge, 52 points of buttons that
+ * add a Part of the page or take it away, and the pane fills the other 264 in
+ * three bands, in the order the hand reaches for them. The session sits on one
+ * line at the top. The Parts that are on scroll in the middle, in the Spine's
+ * order. The microphone and the reading controls are docked out of the
+ * scrolling page: they are what the panel is for, so a growing list of skills
+ * must never push them off screen. Nothing is behind a disclosure, because a
+ * voice assistant you have to open a drawer to read is not telling you
+ * anything.
  *
  * Two attributes on <body> carry everything that changes: `data-axis`, which is
  * `side` or `band` and decides which measure is the scarce one, and
@@ -23,6 +25,7 @@ body {
 }
 
 body {
+  position: relative;
   display: flex;
   background-color: var(--color-surface);
   user-select: none;
@@ -48,111 +51,6 @@ body[data-position='top'] {
   flex-direction: column-reverse;
 }
 
-/* --- Shut ---------------------------------------------------------------- */
-
-/* 52 points, and only what still has to be reachable. The panel and its handle
-   are not narrowed down to this — they are out, and this is in. */
-body[data-collapsed='true'] > .grip,
-body[data-collapsed='true'] > .panel {
-  display: none;
-}
-
-/* Named `.shut` and not `.bar`, which theme.css already spends on the 4-point
-   progress bar. The two collided in silence: a rule this file never writes —
-   `height: 4px` — reached the whole column and cut it down to its own padding,
-   with the overflow hiding every button but the top of the first. */
-.shut {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  /* 5.6 and not 8.4: the microphone is 36 across, and at the wider step it and
-     its padding came to 52.8 inside 52 — one point over, which on a bar this
-     narrow is a glyph with its edge shaved off. */
-  padding: var(--space-2);
-  overflow: hidden;
-}
-
-body[data-axis='side'] .shut {
-  flex-direction: column;
-}
-
-body[data-axis='band'] .shut {
-  flex-direction: row;
-}
-
-.shut-btn {
-  /* Thirteen icons want 499 points down a side and the window is allowed to be
-     420 tall, so they give way together rather than the last of them being cut
-     off: each keeps its 30 points wherever there is room and loses a little of
-     its height where there is not. No breakpoint decides it — the shortfall is
-     divided by the same flex that laid the column out. */
-  flex: 0 1 auto;
-  min-height: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-  font-size: 15px;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-md);
-}
-
-.shut-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-text) 10%, transparent);
-}
-
-.shut-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* The solid accent object, in miniature. Industry allows exactly one — the
-   primary button — and this is the same control wearing the same paint: on a
-   52-point bar the microphone has no word to carry it, and it is the thing the
-   whole app is for. It takes `--on-accent` rather than a fixed ink, because the
-   accent is light on slate and dark on paper. */
-.shut-mic {
-  width: 36px;
-  height: 44px;
-  /* It gives way too, but last and least: 8 points of the 44 and no further, so
-     the one filled block on the bar is still the tallest thing on it. */
-  min-height: 36px;
-  border-radius: 0;
-  color: var(--on-accent);
-  background: var(--color-accent);
-}
-
-.shut-mic:hover:not(:disabled) {
-  background: var(--color-accent-400);
-}
-
-[data-theme='light'] .shut-mic:hover:not(:disabled) {
-  background: var(--color-accent-600);
-}
-
-/* Listening, it is the same button doing the opposite thing, and it says so. */
-.shut-mic.listening {
-  background: var(--color-accent-700);
-}
-
-/* Pushed to the end of the bar, so the mover is where the footer would put
-   it — last, and away from everything pressed by accident. */
-.shut-move {
-  margin-top: auto;
-}
-
-body[data-axis='band'] .shut-move {
-  margin-top: 0;
-  margin-left: auto;
-}
-
 /* --- The handle ---------------------------------------------------------- */
 
 /* The divide from the terminal is a rule that fades out at both ends, not a
@@ -166,10 +64,24 @@ body[data-axis='band'] .shut-move {
   justify-content: center;
 }
 
+/* Down a side the handle lies over the pane's inner edge rather than beside
+   it, inside the pane's own margin: the Rail's 316 is the Spine's 52 and the
+   pane's 264, and nothing else. */
 body[data-axis='side'] .grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
   width: 5px;
-  height: 100%;
   cursor: col-resize;
+}
+
+body[data-position='right'] .grip {
+  left: 0;
+}
+
+body[data-position='left'] .grip {
+  right: 0;
 }
 
 body[data-axis='band'] .grip {
@@ -206,19 +118,414 @@ body[data-axis='band'] .grip-bar {
   display: flex;
 }
 
-body[data-axis='side'] .panel {
+/* The Spine is first in the source, so on the left it leads and on the right
+   the row is turned round: either way it is on the window's outer edge. */
+body[data-position='left'] .panel {
+  flex-direction: row;
+}
+
+body[data-position='right'] .panel {
+  flex-direction: row-reverse;
+}
+
+/* Along an edge the Spine is a row on the Band's outer edge: above the pane at
+   the top, below it at the foot. */
+body[data-position='top'] .panel {
   flex-direction: column;
 }
 
-body[data-axis='band'] .panel {
+body[data-position='bottom'] .panel {
+  flex-direction: column-reverse;
+}
+
+.pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+body[data-axis='side'] .pane {
+  flex-direction: column;
+}
+
+body[data-axis='band'] .pane {
   flex-direction: row;
   align-items: stretch;
 }
 
+/* --- The Spine ------------------------------------------------------------
+   One button per Part, in the Spine's order, and at its foot the theme, the
+   language, Settings, the mover and Shut. A Deck block's button is drawn in
+   the block's colour: its abbreviation over its glyph while off, over its live
+   figure while on. A section's is its glyph over its abbreviation. On is the
+   tint and a 2-point mark on the outer edge, as the prototype drew it. */
+
+.spine {
+  /* Positioned, so the foot's hidden labels (.sr-only, absolute) are inside
+     the Spine's scroller and not hung off the body below the window. */
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background-color: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  scrollbar-width: none;
+}
+
+body[data-axis='side'] .spine {
+  width: 52px;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.spine-parts,
+.spine-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Pushed to the Spine's foot, away from the Parts, where the footer's controls
+   were the last thing in the panel. */
+.spine-foot {
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.spine-part[data-part='gauge'] { --c: var(--deck-gauge); }
+.spine-part[data-part='plan'] { --c: var(--deck-plan); }
+.spine-part[data-part='agents'] { --c: var(--deck-agents); }
+.spine-part[data-part='loops'] { --c: var(--deck-loops); }
+.spine-part[data-part='events'] { --c: var(--deck-events); }
+
+.spine-part {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 44px;
+  height: 34px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+}
+
+.spine-part[hidden] {
+  display: none;
+}
+
+.spine-part:hover {
+  color: var(--color-text);
+  border-color: var(--color-divider);
+}
+
+.spine-deck {
+  color: color-mix(in srgb, var(--c) 55%, var(--muted));
+}
+
+/* The Spine's labels follow their own text size, a setting (9 to start); the
+   Panel sets it on the whole panel from the stored value. The figures are a
+   point over it. */
+.panel {
+  --spine-font: 9px;
+}
+
+.spine-abbr {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--spine-font);
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.spine-glyph {
+  line-height: 1;
+}
+
+.spine-deck .spine-glyph {
+  font-size: 14px;
+}
+
+.spine-figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: calc(var(--spine-font) + 1px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.spine-figure[hidden] {
+  display: none;
+}
+
+/* While on, a Deck block's button shows its figure in its glyph's place. */
+.spine-deck[aria-pressed='true'] .spine-glyph:has(~ .spine-figure:not([hidden])) {
+  display: none;
+}
+
+/* A colour and not the `background` shorthand — see 0028. */
+.spine-part[aria-pressed='true'] {
+  color: var(--c, var(--accent-ink));
+  background-color: color-mix(in srgb, var(--c, var(--color-accent)) 14%, transparent);
+}
+
+.spine-part[aria-pressed='true']::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--c, var(--accent-ink));
+}
+
+body[data-position='left'] .spine-part[aria-pressed='true']::before {
+  left: -4px;
+}
+
+body[data-position='right'] .spine-part[aria-pressed='true']::before {
+  right: -4px;
+}
+
+/* Dragging the Spine. The button picked up fades; the one it is held over
+   takes a line on the side it will land: above or below it down a side, left
+   or right of it along a Band, where the Spine is a row. `::after`, since
+   `::before` is the mark of a Part that is on. */
+.spine-part[draggable='true'] {
+  cursor: grab;
+}
+
+.spine-part.dragging {
+  opacity: 0.35;
+}
+
+.spine-part.drop-before::after,
+.spine-part.drop-after::after {
+  content: '';
+  position: absolute;
+  background: var(--accent-ink);
+  pointer-events: none;
+}
+
+body[data-axis='side'] .spine-part.drop-before::after,
+body[data-axis='side'] .spine-part.drop-after::after {
+  left: 2px;
+  right: 2px;
+  height: 2px;
+}
+
+body[data-axis='side'] .spine-part.drop-before::after {
+  top: -3px;
+}
+
+body[data-axis='side'] .spine-part.drop-after::after {
+  bottom: -3px;
+}
+
+body[data-axis='band'] .spine-part.drop-before::after,
+body[data-axis='band'] .spine-part.drop-after::after {
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+}
+
+body[data-axis='band'] .spine-part.drop-before::after {
+  left: -3px;
+}
+
+body[data-axis='band'] .spine-part.drop-after::after {
+  right: -3px;
+}
+
+.spine-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--muted-strong);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+}
+
+.spine-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-divider);
+}
+
+/* The language is a word, not a glyph: PT or EN, the one answers come in. */
+.spine-lang {
+  height: 22px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent-ink);
+  border-color: var(--color-divider);
+}
+
+/* Along an edge the Spine is a row the Band's whole length, 36 points deep on
+   its outer edge: the Parts, then the foot pushed to the far end. Each Part's
+   button lies on its side — glyph and abbreviation, or abbreviation and
+   figure, side by side — since a row has the width and not the depth. */
+body[data-axis='band'] .spine {
+  flex-direction: row;
+  height: 36px;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+body[data-axis='band'] .spine-parts,
+body[data-axis='band'] .spine-foot {
+  flex-direction: row;
+}
+
+body[data-axis='band'] .spine-foot {
+  margin-top: 0;
+  margin-left: auto;
+  padding-top: 0;
+  padding-left: var(--space-2);
+}
+
+body[data-axis='band'] .spine-part {
+  flex-direction: row;
+  gap: 5px;
+  width: auto;
+  min-width: 44px;
+  height: 30px;
+  padding: 0 7px;
+  font-size: 14px;
+}
+
+body[data-axis='band'] .spine-btn {
+  height: 30px;
+}
+
+body[data-axis='band'] .spine-lang {
+  height: 22px;
+}
+
+/* The mark of a Part that is on, along the Spine's outer edge: the window's
+   top at the top, its foot at the foot. */
+body[data-axis='band'] .spine-part[aria-pressed='true']::before {
+  top: auto;
+  bottom: auto;
+  left: 6px;
+  right: 6px;
+  width: auto;
+  height: 2px;
+}
+
+body[data-position='top'] .spine-part[aria-pressed='true']::before {
+  top: -3px;
+}
+
+body[data-position='bottom'] .spine-part[aria-pressed='true']::before {
+  bottom: -3px;
+}
+
+/* --- Shut ---------------------------------------------------------------- */
+
+/* Shut, the Panel is its Spine and nothing else: 52 points on either axis, the
+   Deck figures still on its buttons, the microphone added at its foot. The
+   handle and the pane are out — not narrowed down, out. */
+body[data-collapsed='true'] > .grip,
+body[data-collapsed='true'] .pane {
+  display: none;
+}
+
+/* The microphone is on the Spine only while shut; open, it is the Dock's. */
+body:not([data-collapsed='true']) .spine-mic {
+  display: none;
+}
+
+/* Along an edge, shut, the Spine is the whole Panel: 52 deep rather than 36,
+   each button drawn as down a side — abbreviation over glyph or figure —
+   since 52 points has the room. */
+body[data-axis='band'][data-collapsed='true'] .spine {
+  flex: 1;
+  height: 52px;
+}
+
+body[data-axis='band'][data-collapsed='true'] .spine-part {
+  flex-direction: column;
+  gap: 1px;
+  width: 44px;
+  height: 34px;
+  padding: 0;
+  font-size: 16px;
+}
+
+body[data-position='top'][data-collapsed='true'] .spine-part[aria-pressed='true']::before {
+  top: -9px;
+}
+
+body[data-position='bottom'][data-collapsed='true'] .spine-part[aria-pressed='true']::before {
+  bottom: -9px;
+}
+
+/* The solid accent object, in miniature, and the one filled button in the
+   window: on a 52-point Spine the microphone has no word to carry it, and it
+   is the thing the whole app is for. It takes `--on-accent` rather than a fixed
+   ink, because the accent is light on slate and dark on paper. */
+.spine-mic {
+  width: 36px;
+  height: 44px;
+  margin-bottom: var(--space-2);
+  color: var(--on-accent);
+  background: var(--color-accent);
+  border: 0;
+}
+
+body[data-axis='band'] .spine-mic {
+  width: 44px;
+  height: 36px;
+  margin-bottom: 0;
+  margin-right: var(--space-2);
+}
+
+.spine-mic:hover:not(:disabled) {
+  color: var(--on-accent);
+  background: var(--color-accent-400);
+}
+
+[data-theme='light'] .spine-mic:hover:not(:disabled) {
+  background: var(--color-accent-600);
+}
+
+.spine-mic:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Listening, it is the same button doing the opposite thing, and it says so. */
+.spine-mic.listening {
+  background: var(--color-accent-700);
+}
+
 /* --- The head ------------------------------------------------------------ */
 
-/* Down a side it holds the strip and nothing else. Along an edge the Session
-   pair joins it, and the two stack into the band's first column. */
+/* The strip and nothing else: down a side the head of the pane, along an
+   edge its first column. */
 .head {
   flex: none;
   min-width: 0;
@@ -246,7 +553,7 @@ body[data-axis='band'] .head .strip {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-6) var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
 body[data-axis='band'] .strip {
@@ -351,12 +658,33 @@ body[data-axis='band'] .strip-name {
   scrollbar-color: var(--track) transparent;
 }
 
+/* Down a side the margin is 13.6 rather than 20.4: the Spine has taken 52 of
+   the Rail, and what the pane has left goes to the buttons and the lines.
+   The Parts are spaced by a margin rather than a gap so that two Deck lines in
+   a row sit together, as the Deck's lines always have. */
 body[data-axis='side'] .body {
   flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-3) var(--space-6) var(--space-6);
+  padding: var(--space-3) var(--space-4) var(--space-6);
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+body[data-axis='side'] .body > * + * {
+  margin-top: var(--space-6);
+}
+
+body[data-axis='side'] .body > .deck-block + .deck-block {
+  margin-top: 0;
+}
+
+body[data-axis='side'] .body > #deck + .deck-block {
+  margin-top: var(--space-2);
+}
+
+/* Down a side the Deck section holds only the not-reporting sentence; each
+   block is a Part with a line of its own. */
+body[data-axis='side'] #deck > .label {
+  display: none;
 }
 
 /* The blocks sit on the middle line of the band rather than against its top, and
@@ -370,7 +698,9 @@ body[data-axis='band'] .body {
   align-items: center;
   justify-content: flex-start;
   gap: var(--space-4);
-  padding: var(--space-4) 0;
+  /* Three rows of 24, their gaps and the scrollbar a long row brings, inside
+     the 107 the Spine's row leaves the pane. */
+  padding: var(--space-1) 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -385,19 +715,74 @@ body[data-axis='band'] section {
   flex: none;
 }
 
-/* --- Commands -----------------------------------------------------------
-   Down a side the grid answers to width: one track per 72 points, so a panel
-   dragged wider gains a column rather than stretching the buttons it has.
+/* --- A section's head -----------------------------------------------------
+   Its glyph, its name in the system's upper-case label, and a cross that
+   takes it off the Panel — the same as pressing its button on the Spine.
+   In a band there is none: see below. */
+
+.part-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.part-head .label {
+  flex: 1;
+  min-width: 0;
+}
+
+.part-glyph {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.part-remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.part-remove:hover {
+  color: var(--color-text);
+  border-color: var(--color-divider);
+}
+
+/* In a band the head goes altogether: the Spine's row names each column, in
+   the same order, right beside it, and the three rows of buttons need every
+   point the row leaves the pane. */
+body[data-axis='band'] .part-head,
+body[data-axis='band'] #deck > .label {
+  display: none;
+}
+
+/* --- Commands and Skills --------------------------------------------------
+   Down a side each list stands in the columns the user chose for it (1 to 5,
+   three to start; the Panel sets `--columns`), every button the same size, its
+   icon and its label centred, whatever the width.
    Along an edge the scarce measure is height, so the same buttons flow down
-   three rows and extend sideways — never a row more than the band can show. */
+   three rows and extend sideways — never a row more than the band can show —
+   and the columns chosen do not apply. */
 
 .commands {
+  --columns: 3;
+  --button-font: 12px;
   display: grid;
   gap: var(--space-2);
 }
 
 body[data-axis='side'] .commands {
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
 }
 
 body[data-axis='band'] .commands {
@@ -412,16 +797,78 @@ body[data-axis='band'] #skills {
   grid-auto-columns: 84px;
 }
 
+/* The list's own text size, and a height reckoned from it: 30 at the 12 it
+   starts at. The icon a shade larger than the words, in the accent's ink. */
 .commands .btn {
-  font-size: 12px;
-  padding: 7px 4px;
+  position: relative;
+  gap: 4px;
+  height: calc(var(--button-font) * 2.5);
+  padding: 0 4px;
+  font-size: var(--button-font);
   min-width: 0;
   overflow: hidden;
 }
 
+.commands .btn > .ph {
+  flex: none;
+  font-size: 1.1em;
+  color: var(--accent-ink);
+}
+
+/* In a band the rows are the band's, 24 high, whatever the size. */
 body[data-axis='band'] .commands .btn {
-  padding: 2px 4px;
-  font-size: 11px;
+  height: auto;
+  padding: 0 4px;
+}
+
+/* Dragging a button to reorder its list: the one picked up fades, the one it
+   is held over takes a line on the side it will land — left or right down a
+   side, where the grid reads along its rows; above or below in a band, where
+   it fills its three rows column by column. The button clips what overflows,
+   so the line is drawn just inside its edge. */
+.commands .btn[draggable='true'] {
+  cursor: grab;
+}
+
+.commands .btn.dragging {
+  opacity: 0.35;
+}
+
+.commands .btn.drop-before::after,
+.commands .btn.drop-after::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--accent-ink);
+  pointer-events: none;
+}
+
+.commands .btn.drop-before::after {
+  left: 0;
+}
+
+.commands .btn.drop-after::after {
+  right: 0;
+}
+
+body[data-axis='band'] .commands .btn.drop-before::after,
+body[data-axis='band'] .commands .btn.drop-after::after {
+  left: 2px;
+  right: 2px;
+  width: auto;
+  height: 2px;
+}
+
+body[data-axis='band'] .commands .btn.drop-before::after {
+  top: 0;
+  bottom: auto;
+}
+
+body[data-axis='band'] .commands .btn.drop-after::after {
+  top: auto;
+  bottom: 0;
 }
 
 .commands .btn span {
@@ -491,7 +938,8 @@ body[data-axis='band'] .commands .btn {
 
 /* In a band the glyph carries it and the sentence stays in `title`. */
 body[data-axis='band'] .switch-word,
-body[data-axis='band'] #session-section .hint {
+body[data-axis='band'] #session-section .hint,
+body[data-axis='band'] #session-section .part-head {
   display: none;
 }
 
@@ -499,6 +947,784 @@ body[data-axis='band'] .switch {
   flex: none;
   width: 32px;
   padding: 0;
+}
+
+/* --- The Deck -------------------------------------------------------------
+   Only to look at. Each block that is on is one dense line — a 3-point mark in
+   its colour, its abbreviation, its key figures and a chevron — and a click
+   opens its detail in place, under the line. In a band each line gives way to
+   a chip with the same figures, drawn at the end of this file's Deck part.
+   Every word in it is in sentence case: nothing here sets text-transform. */
+
+/* The Deck's own type size, a setting apart from the terminal's: every size
+   below is reckoned from it — the body text is the size itself, the small print
+   a point or two under, the glyphs a point over — so the lines, the details and
+   the chips grow and shrink together. The Panel sets it from the stored value,
+   on the whole panel: down a side each block's line is a Part of the page, not
+   a row of the Deck's section. */
+.panel {
+  --deck-font: 10px;
+}
+
+/* Each block's colour, which its line, its detail and its chip are drawn in;
+   the warning or the alarm stands in while the block needs you. */
+.deck-block[data-block='plan'], .deck-chip[data-block='plan'] { --block: var(--deck-plan); }
+.deck-block[data-block='gauge'], .deck-chip[data-block='gauge'] { --block: var(--deck-gauge); }
+.deck-block[data-block='agents'], .deck-chip[data-block='agents'] { --block: var(--deck-agents); }
+.deck-block[data-block='loops'], .deck-chip[data-block='loops'] { --block: var(--deck-loops); }
+.deck-block[data-block='events'], .deck-chip[data-block='events'] { --block: var(--deck-events); }
+
+.deck-block.attention[data-attention='warning'],
+.deck-chip.attention[data-attention='warning'] { --block: var(--warning); }
+.deck-block.attention[data-attention='alarm'],
+.deck-chip.attention[data-attention='alarm'] { --block: var(--alarm); }
+
+.deck-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.deck-block[hidden] {
+  display: none;
+}
+
+/* The line: the mark down its left edge, a hairline under it. The toggle is
+   the whole of it but the Plan's mute, which sits at its far end. */
+.deck-line {
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--deck-font) * 2);
+  border-left: 3px solid var(--block);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+}
+
+.deck-line:hover {
+  background-color: color-mix(in srgb, var(--block) 8%, transparent);
+}
+
+/* A colour, never the `background` shorthand — see 0028. */
+.deck-block.attention > .deck-line {
+  background-color: color-mix(in srgb, var(--block) 16%, transparent);
+}
+
+.deck-block.open > .deck-line {
+  border-bottom-color: transparent;
+}
+
+.deck-line-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: calc(var(--deck-font) * 2.7) minmax(0, 1fr) calc(var(--deck-font) + 4px);
+  align-items: center;
+  column-gap: 6px;
+  padding: 0 4px 0 6px;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.deck-line-toggle:focus-visible {
+  outline: 1px solid var(--block);
+  outline-offset: -1px;
+}
+
+.deck-line-abbr,
+.deck-chip-abbr {
+  flex: none;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: calc(var(--deck-font) + 0.5px);
+  letter-spacing: 0.06em;
+  color: var(--block);
+}
+
+.deck-line-chevron {
+  justify-self: end;
+  font-size: calc(var(--deck-font) - 1px);
+  color: var(--muted);
+}
+
+/* The figures: words and numbers side by side on one line. The one part
+   marked to fill gives way, with an ellipsis, when the line is short of room;
+   the figures, the other words and the drawings — a bar, a step per segment,
+   the cells — keep their size, since a fraction of a point taken from a figure
+   would cut it to an ellipsis. */
+.deck-line-figures,
+.deck-chip-figures {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.deck-line-figures.clipped,
+.deck-chip-figures.clipped {
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.5em), transparent);
+}
+
+.deck-part {
+  flex: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.deck-part.fill {
+  flex: 0 1 auto;
+}
+
+.deck-part.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-part.tone-quiet { color: var(--muted-strong); }
+.deck-part.tone-live { color: var(--accent-ink); }
+.deck-part.tone-warning { color: var(--warning); }
+.deck-part.tone-alarm { color: var(--alarm); }
+
+.deck-part-glyph {
+  flex: none;
+  font-size: calc(var(--deck-font) + 1px);
+}
+
+.deck-part-glyph.tone-alarm { color: var(--alarm); }
+
+/* A tiny bar — the context, a long plan — in the block's colour. */
+.deck-part-bar {
+  flex: none;
+  position: relative;
+  width: calc(var(--deck-font) * 3.5);
+  height: 4px;
+  background: var(--track);
+}
+
+.deck-part-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--block);
+}
+
+/* The Plan: one segment per step — done filled, under way outlined and
+   pulsing, still to come a bare track. */
+.deck-part-steps {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  width: calc(var(--deck-font) * 4.5);
+  height: 6px;
+}
+
+.deck-part-steps > i {
+  flex: 1;
+  background: var(--track);
+}
+
+.deck-part-steps > i.completed {
+  background: var(--block);
+}
+
+.deck-part-steps > i.in_progress {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--block);
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+/* The detail, open under its line: a fainter mark of the same colour. */
+.deck-block-body {
+  min-height: 0;
+  padding: 4px 4px 8px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--block) 40%, transparent);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.deck-block-body[hidden] {
+  display: none;
+}
+
+/* The Plan block's mute, at the far end of its line: a bare glyph, struck
+   through and in the muted ink while the sounds are off. */
+.deck-plan-mute {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0 5px;
+  border: 0;
+  background: none;
+  color: var(--muted-strong);
+  font-size: calc(var(--deck-font) + 2px);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.deck-plan-mute:hover {
+  color: var(--color-text);
+}
+
+.deck-plan-mute[aria-pressed='true'] {
+  color: var(--muted);
+}
+
+.deck-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deck-event {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 5px;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 5px);
+  color: var(--color-text);
+}
+
+.deck-event > .ph {
+  font-size: calc(var(--deck-font) + 1px);
+  color: var(--muted);
+}
+
+.deck-event-error > .ph,
+.deck-event-denied > .ph {
+  color: var(--accent-ink);
+}
+
+/* Inside a subagent: the same line, dimmer, so the main conversation stands out. */
+.deck-event.in-agent {
+  opacity: 0.6;
+}
+
+.deck-event-label {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  white-space: nowrap;
+}
+
+.deck-event-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-strong);
+}
+
+.deck-event-time {
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 1px);
+  color: var(--muted);
+}
+
+/* The Gauge: the folder and branch on a quiet line of their own; the theme's
+   progress bar, a little taller, with a tick where each compaction began; the
+   plan's windows, then the setting on one quiet line. */
+.deck-gauge-place {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+  color: var(--muted-strong);
+}
+
+.deck-gauge-place .ph {
+  flex: none;
+  color: var(--muted);
+}
+
+.deck-gauge-folder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-gauge-branch {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.deck-gauge-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.deck-gauge-bar {
+  position: relative;
+  height: 6px;
+  overflow: visible;
+}
+
+.deck-gauge-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent-ink);
+}
+
+.deck-gauge-mark.running {
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+.deck-gauge-context .bar-time {
+  font-family: var(--font-mono);
+  font-size: var(--deck-font);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.deck-gauge-windows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.deck-gauge-window {
+  color: var(--muted-strong);
+}
+
+.deck-gauge-windows > .deck-gauge-window-bar {
+  width: auto;
+}
+
+.deck-gauge-reset {
+  color: var(--muted);
+}
+
+.deck-gauge-foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: 3px;
+  min-width: 0;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+}
+
+.deck-gauge-setting {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-strong);
+}
+
+/* Agents: the counts on one line, then a few cards side by side — a line
+   object each, its type over its task over steps, clock and tokens — or, past
+   three, one lane per agent on a shared time line. A failed agent is outlined
+   in the alarm colour; one cut short for lack of output room carries a flag in
+   it. */
+.deck-agent-counts {
+  display: flex;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--deck-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-strong);
+}
+
+.deck-agent-count.running.on {
+  color: var(--accent-ink);
+}
+
+.deck-agent-count.failed.on {
+  color: var(--alarm);
+}
+
+.deck-agent-label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deck-agent-status {
+  flex: none;
+  font-size: calc(var(--deck-font) + 1px);
+  color: var(--muted);
+}
+
+.deck-agent-lane.running .deck-agent-status {
+  color: var(--accent-ink);
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+.deck-agent-lane.failed .deck-agent-status {
+  color: var(--alarm);
+}
+
+.deck-agent-flag {
+  flex: none;
+  margin-left: auto;
+  font-size: calc(var(--deck-font) + 1px);
+  color: var(--alarm);
+}
+
+.deck-agent-task {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.deck-agent-task.untold {
+  color: var(--muted);
+}
+
+.deck-agent-lanes {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Fixed columns, so every track starts and ends at the same place and the
+   time line is shared. */
+.deck-agent-lane,
+.deck-agent-axis {
+  display: grid;
+  /* The figures' column follows the type size: "12 st · 4:05" in the Deck's
+     mono, at a size of its own. */
+  grid-template-columns: minmax(0, 32%) minmax(0, 1fr) calc((var(--deck-font) - 1px) * 7.6) calc(var(--deck-font) + 1px);
+  align-items: center;
+  column-gap: 5px;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 5px);
+}
+
+.deck-agent-lane .deck-agent-task {
+  white-space: nowrap;
+}
+
+.deck-agent-lane.failed .deck-agent-task,
+.deck-agent-lane.cut-short .deck-agent-task {
+  color: var(--alarm);
+}
+
+.deck-agent-track {
+  position: relative;
+  height: 8px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.deck-agent-bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  min-width: 2px;
+  background: var(--muted);
+}
+
+.deck-agent-lane.running .deck-agent-bar {
+  background: var(--color-accent);
+}
+
+.deck-agent-lane.failed .deck-agent-bar {
+  background: var(--alarm);
+}
+
+.deck-agent-lane .deck-agent-clock {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 1px);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-strong);
+  white-space: nowrap;
+}
+
+.deck-agent-axis {
+  line-height: calc(var(--deck-font) + 1px);
+}
+
+.deck-agent-axis-span {
+  grid-column: 2 / 5;
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 2px);
+  color: var(--muted);
+}
+
+.deck-loops {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  max-height: 140px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deck-loop-clock {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 1px);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-strong);
+  white-space: nowrap;
+}
+
+/* Loops: one row per compaction or stray — glyph, name, what set it off or its
+   steps and sightings, and its clock. A live row takes the accent. */
+.deck-loop {
+  display: grid;
+  grid-template-columns: 12px minmax(0, max-content) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 5px;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 5px);
+  color: var(--muted-strong);
+}
+
+.deck-loop > .ph {
+  font-size: calc(var(--deck-font) + 1px);
+  color: var(--muted);
+}
+
+.deck-loop.live > .ph {
+  color: var(--accent-ink);
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+.deck-loop-name {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.deck-loop-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 1px);
+  color: var(--muted);
+}
+
+.deck-loop.live .deck-loop-clock {
+  color: var(--accent-ink);
+}
+
+/* Plan: one row per plan - its title, a segment per step, done/total, and
+   under a subagent's the step under way - the main conversation's first, a
+   subagent's dimmer; then the main plan's steps, numbered: done, under way
+   and still to come. */
+.deck-plan-rows {
+  display: grid;
+  grid-template-columns: fit-content(calc(var(--deck-font) * 10)) minmax(calc(var(--deck-font) * 3), 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 3px;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+}
+
+/* A row lends its three columns to the block's grid, so every bar starts and
+   ends where the others do. */
+.deck-plan-row {
+  display: contents;
+}
+
+.deck-plan-row.in-agent > * {
+  opacity: 0.8;
+}
+
+.deck-plan-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  color: var(--color-text);
+}
+
+.deck-plan-row > .deck-plan-bar {
+  width: auto;
+}
+
+.deck-plan-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.deck-plan-current {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 0.2em;
+  color: var(--muted-strong);
+}
+
+.deck-plan-row.finished .deck-plan-current {
+  color: var(--muted);
+}
+
+.deck-plan-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 3px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.deck-plan-step {
+  display: grid;
+  grid-template-columns: 1.4em 14px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 3px;
+  font-size: var(--deck-font);
+  line-height: calc(var(--deck-font) + 4px);
+  color: var(--color-text);
+}
+
+.deck-plan-number {
+  font-family: var(--font-mono);
+  font-size: calc(var(--deck-font) - 1.5px);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.deck-plan-step > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-plan-step.completed {
+  color: var(--muted);
+}
+
+.deck-plan-step.in_progress {
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+.deck-plan-step.in_progress > .ph {
+  animation: softpulse 1.2s ease-in-out infinite;
+}
+
+/* --- The Deck in a band -----------------------------------------------------
+   One chip per block that is on, in place of its line: the abbreviation in the
+   block's own colour and the same figures the line shows, the whole story in
+   `title`. Chips flow down three rows and then sideways, like the commands
+   beside them, so the section is as wide as its chips and scrolls with the
+   rest of the row. Each chip is drawn as a line is — the 3-point mark down its
+   left edge, a hairline under it — and tinted, mark and abbreviation in the
+   warning or the alarm, when its block needs you. */
+
+.deck-chips {
+  display: none;
+}
+
+body[data-axis='band'] .deck-chips {
+  display: grid;
+  /* The commands' own rows, so a chip lines up with the button beside it. */
+  grid-template-rows: repeat(3, 24px);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-2);
+}
+
+/* Not reporting is a sentence, and a band has no room for one: the chips say
+   so in a word or two instead, and the session strip already says whether
+   Claude Code is reporting. */
+body[data-axis='band'] #deck-silent {
+  display: none;
+}
+
+.deck-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 250px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 8px 0 6px;
+  border-left: 3px solid var(--block);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: var(--deck-font);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.deck-chip[hidden] {
+  display: none;
+}
+
+/* The Plan's mute, on its chip in a band where there is no line to hold it:
+   last, after the figures, which give way before it does. */
+.deck-chip .deck-plan-mute {
+  padding: 0 2px;
+  margin-right: -4px;
+}
+
+/* A colour, never the `background` shorthand — see 0028. */
+.deck-chip.attention {
+  background-color: color-mix(in srgb, var(--block) 16%, transparent);
+}
+
+/* A tick or a cross among figures, drawn as its Phosphor icon: the panel's
+   font has neither, and stands a root sign and a plain X in for them. */
+.deck-mark {
+  font-size: 0.95em;
+  vertical-align: -0.1em;
+  margin: 0 1px;
 }
 
 /* --- Recent readings ----------------------------------------------------- */
@@ -662,7 +1888,7 @@ body[data-axis='band'] #downloading {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-6) var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-3);
 }
 
 /* The dock is still the first thing to give way when a band runs short, and the
@@ -674,7 +1900,8 @@ body[data-axis='band'] #downloading {
    buttons that stopped at a known width. The row carries prose now, the
    readings and the notices, so the shortfall has no ceiling, and at 296 the
    microphone is nought points wide: the one button the whole app is for, spent
-   on a paragraph. The floor is the width that still draws it. Past that the row
+   on a paragraph. The floor is the width that still draws it — now one row of
+   the microphone, the reading's controls and the edit buttons. Past that the row
    is the thing that gives, by scrolling — Commands stays where it always is and
    what leaves the screen is the prose at the far end of it. */
 body[data-axis='band'] .dock-band {
@@ -691,10 +1918,17 @@ body[data-axis='band'] .dock-band {
   padding: var(--space-3);
 }
 
+/* Down a side the dock's own margin is the smaller step: the Spine has taken
+   52 of the Rail, and the reading's bar is what the room is wanted for. */
+body[data-axis='side'] .dock {
+  padding: var(--space-3) var(--space-2);
+}
+
+/* The state line over one row of controls. With the microphone gone from the
+   voice group to the head of the reading controls, the line is all that group
+   has left, and beside the row it would be the first thing squeezed out. */
 body[data-axis='band'] .dock {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   padding: var(--space-2);
 }
 
@@ -705,7 +1939,6 @@ body[data-axis='band'] .dock {
 }
 
 body[data-axis='band'] .dock-mic {
-  flex: 1;
   min-width: 0;
   gap: var(--space-2);
 }
@@ -719,7 +1952,6 @@ body[data-axis='band'] .dock-mic {
 /* Play and Edit share one line in a band: there is no height to stack them in,
    and the group labels go with the stacking. */
 body[data-axis='band'] .dock-rest {
-  flex: none;
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
@@ -761,32 +1993,22 @@ body[data-axis='band'] .dock-head .label {
   color: var(--tint-text);
 }
 
+/* Cut to the height of the state line it sits on, so the line does not grow
+   when the listening starts. */
 .wave {
+  flex: none;
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 22px;
+  gap: 2px;
+  height: 12px;
 }
 
 .wave span {
-  width: 3px;
-  height: 22px;
+  width: 2px;
+  height: 12px;
   border-radius: 2px;
   background: var(--color-accent);
   animation: wave 900ms ease-in-out infinite;
-}
-
-/* Beside the buttons that end the listening, cut to the height of the row they
-   share rather than to the label line it used to sit on. */
-.dock-speak {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.dock-speak .dock-actions {
-  flex: 1;
-  min-width: 0;
 }
 
 /* Nothing to show while the microphone is shut, and an empty box would still
@@ -822,41 +2044,17 @@ body[data-axis='band'] .dock-head .label {
   animation-delay: 180ms;
 }
 
-/* Tall enough to read as the thing the panel is for, even while it cannot be
-   pressed. */
-.dock-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-
-/* While the recogniser is working there is nothing to press, and an empty row
-   would still take its gap out of the dock. */
-.dock-actions:empty {
-  display: none;
-}
-
-.dock-actions > .btn {
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-}
-
-/* Cancel takes only the room its word needs; Finish keeps the rest. */
-.dock-actions > .btn-secondary {
+/* The microphone's slot at the head of the reading controls. Two buttons wide
+   whatever it holds — the microphone, or Finish and Cancel while listening —
+   so pause and everything after it stay where they are when the listening
+   starts and ends. The room Cancel needs reads as the space between the voice
+   and the reading while the microphone stands alone. */
+.dock-voice {
   flex: none;
-  padding-inline: calc(var(--space-3) * 1.4);
-}
-
-/* Speak stops stretching in a band and stands at its own width instead: past
-   300 points a button the length of the window reads as a banner. */
-body[data-axis='band'] .dock-actions {
-  justify-content: center;
-}
-
-body[data-axis='band'] .dock-actions > .btn {
-  flex: 0 1 auto;
-  max-width: 300px;
-  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: calc(28px * 2 + var(--space-1));
 }
 
 .dock-note {
@@ -881,6 +2079,20 @@ body[data-axis='band'] .dock-note {
   align-items: center;
   gap: var(--space-2);
   padding-top: var(--space-3);
+}
+
+/* The reading controls are bare glyphs in boxes of their own, so the narrower
+   gap still parts them — and the bar, which is what gives way to the
+   microphone's slot, keeps the difference. */
+.dock-play {
+  gap: var(--space-1);
+}
+
+/* The reading's row takes what the edit buttons leave, and the bar is what
+   grows into it. */
+body[data-axis='band'] .dock-play {
+  flex: 1;
+  min-width: 0;
 }
 
 /* The rule between the groups is a horizontal one. Side by side there is
@@ -922,7 +2134,7 @@ body[data-axis='band'] .dock-edit {
   justify-content: center;
   gap: 6px;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 6px;
   cursor: pointer;
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
@@ -996,68 +2208,6 @@ body[data-edit='tight'] .edit-btn {
    whole height, so it keeps the command and drops the explanation. */
 body[data-axis='band'] .asked-why {
   display: none;
-}
-
-/* --- Footer ------------------------------------------------------------- */
-
-.foot {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4.2px;
-  padding: var(--space-3) var(--space-6) var(--space-4);
-}
-
-/* Nothing down here shrinks. A .seg hides its overflow, so letting flex squeeze
-   one would quietly cut a letter off PT or clip a theme icon — a control that
-   is wrong rather than a layout that is visibly wrong, which is worse. The room
-   is measured to be there instead: see the segment padding below. */
-.foot > * {
-  flex: none;
-}
-
-.foot #settings {
-  margin-right: auto;
-  font-size: 13px;
-}
-
-/* A band's footer is two lines with a ceiling, and Settings keeps its glyph and
-   loses its word. PT and EN stay: the Settings sheet has no language control to
-   send them to, and a language you cannot reach is worse than a tight row. */
-/* 156 and not the 140 the handoff asked for.
-   Measured under Industry: Settings without its word is 22, the mover 26 and
-   the three themes 79, which with their gaps is 133.8 of content — and the
-   ceiling is on the box, so the footer's own 20.4 of padding comes out of it
-   first. Anything under 155 drops the themes to a line of their own and the
-   footer takes three lines rather than two. */
-body[data-axis='band'] .foot {
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: center;
-  max-width: 156px;
-  padding: var(--space-3);
-}
-
-body[data-axis='band'] .foot #settings {
-  margin-right: 0;
-}
-
-body[data-axis='band'] .foot-word {
-  display: none;
-}
-
-/* Tighter than the system default, and measured rather than guessed: at stock
-   padding the mark, Settings, three themes and two languages came to 283px
-   inside a 282px footer — one pixel over, with no way for it to show. The mark
-   is gone now, and the mover is spending exactly the room it left. */
-.seg-icons .seg-opt {
-  padding: 5px 6px;
-  font-size: 13px;
-}
-
-.seg-opt-tight {
-  padding: 4px 8px;
-  font-size: 12px;
 }
 
 .sr-only {

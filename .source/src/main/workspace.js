@@ -1,7 +1,7 @@
 'use strict'
 
 // A Jarvis window: the terminal, the Jarvis panel on whichever side the user put
-// it, and the Settings sheet over the panel. One window per Session, so several
+// it, and the Settings sheet over the whole window while it is open. One window per Session, so several
 // projects run side by side, each in its own window with its own terminal, panel
 // and settings.
 //
@@ -103,7 +103,10 @@ function createWindow({ onFocus } = {}) {
   const workspace = new BrowserWindow({
     width: WIDTH,
     height: HEIGHT,
-    minWidth: 720,
+    // Narrow enough for three windows side by side on a 1920 screen at 125%
+    // (512 each). Below the rail plus the terminal's floor the panel is what
+    // gives way, as geometry.js decides; shut, it fits whole.
+    minWidth: 480,
     minHeight: 420,
     title: 'Jarvis',
     icon: appIcon(),
@@ -117,7 +120,7 @@ function createWindow({ onFocus } = {}) {
   const panelView = paneFor('panel.js', 'panel.html')
   workspace.contentView.addChildView(terminalView)
   workspace.contentView.addChildView(panelView)
-  // Last, so it is drawn on top of the panel it covers.
+  // Last, so it is drawn on top of the two panes it covers.
   workspace.contentView.addChildView(settingsView)
   settingsView.setVisible(false)
 
@@ -195,24 +198,34 @@ function createWindow({ onFocus } = {}) {
     if (!workspace.isDestroyed()) workspace.hide()
   }
 
-  function dimTerminal(dimmed) {
-    const contents = terminalContents()
-    if (contents) contents.send('terminal:dim', dimmed)
-  }
-
+  /**
+   * The sheet covers the whole window (ADR 0036): the terminal underneath is
+   * neither dimmed nor locked, and runs on. Opening it tells the sheet to read
+   * everything afresh, with this window's own side, which the preferences
+   * (the shape a new window opens at) may not hold.
+   */
   function showSettings() {
+    const opening = !settingsOpen
     settingsOpen = true
     settingsView.setVisible(true)
-    dimTerminal(true)
     layOut()
-    if (!settingsView.webContents.isDestroyed()) settingsView.webContents.focus()
+    const contents = settingsContents()
+    if (!contents) return
+    if (opening) contents.send('settings:shown', { position })
+    contents.focus()
   }
   function hideSettings() {
     settingsOpen = false
     settingsView.setVisible(false)
-    dimTerminal(false)
     layOut()
     focusTerminal()
+  }
+
+  /** Settings opened at one Command's or Skill's row, its name box focused. */
+  function editRow(list, id) {
+    showSettings()
+    const contents = settingsContents()
+    if (contents) contents.send('settings:edit', { list, id })
   }
 
   /**
@@ -281,6 +294,7 @@ function createWindow({ onFocus } = {}) {
     showSettings,
     hideSettings,
     toggleSettings,
+    editRow,
     nameProject,
   }
 }

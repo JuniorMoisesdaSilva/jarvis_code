@@ -4,10 +4,10 @@
 //
 // Jarvis is one folder of compartments the user opens and two they never have
 // to. The app itself sits in one of them — `.source` while it is being built,
-// `Windows/` or `macOS/` once assembled — and has to find its way back up to the
-// folder's root to reach the ones it shares: `Resources`, which both platforms
-// read their voices and listening model from, and `Brain`, which holds the
-// behaviour it carries into a machine's Claude Code.
+// `Windows/` once assembled — and has to find its way back up to the folder's
+// root to reach the ones beside it: `Resources`, which it reads its voices and
+// listening model from, and `Brain`, which holds the behaviour it carries into a
+// machine's Claude Code.
 //
 // The decision is pure — a walk up the tree looking for a marker, with the disk
 // injected — so it can be tested without one. The adapter supplies the real
@@ -30,7 +30,7 @@ const MARKER = '.jarvis-root'
 /** The compartment holding what Jarvis writes: preferences, downloaded models. */
 const DATA = '.jarvis-data'
 
-/** The compartment holding the voices and the listening model, shared by both platforms. */
+/** The compartment holding the voices and the listening model. */
 const RESOURCES = 'Resources'
 
 /**

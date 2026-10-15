@@ -12,7 +12,7 @@
 
 const path = require('node:path')
 
-/** Where the voices sit, inside the Resources compartment both platforms share. */
+/** Where the voices sit, inside the Resources compartment. */
 const FOLDER = 'voices'
 
 /**

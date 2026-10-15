@@ -1,6 +1,6 @@
 ---
 name: maestro
-description: Runs a piece of software work from request to delivery, on its own. Use when the user describes something they want built, fixed or improved in a project — a feature, an application, a hard bug, an idea still half-formed. The maestro interviews, writes the plan, cuts it into tasks, builds, tests and delivers it working, stopping only once, for the plan to be accepted.
+description: Runs a piece of software work from request to delivery, on its own. Use when the user describes something they want built, fixed or improved in a project — a feature, an application, a hard bug, an idea still half-formed. The maestro interviews, writes the plan, cuts it into tasks, builds, tests and delivers it working. It stops for the plan to be accepted and, after that, only when a decision outside the plan has no answer in the project's data.
 ---
 
 # Maestro
@@ -43,7 +43,7 @@ If **neither** exists, tell the client in one sentence that the package is missi
 
 ### 2.2 How you use those skills
 
-You **read the file and follow what it says**. Do not try to fire them as a command: most are marked manual and only the user themselves can trigger them. Reading and following works the same, and it works in any tool.
+You **read the file and follow what it says**. Do not try to fire them as a command: half of them are marked manual and only the user themselves can trigger them. Reading and following works the same, and it works in any tool.
 
 The eight, and what each is for:
 
@@ -109,10 +109,7 @@ Read `grilling/SKILL.md` and follow the method: build the decision tree, work in
 
 Two adaptations are mandatory, because the client is not a developer:
 
-**Format follows the channel.** Detect whether they are typing or speaking.
-
-- **Typing:** the `grilling` format works — numbered questions, each with your recommendation, the whole round at once.
-- **Speaking:** a whole round at once does not survive audio. Announce the size ("I have three things to decide with you"), ask **one question at a time**, at most **three options**, always numbered so they can answer with the number alone.
+**One question at a time, always.** Build the whole round as `grilling` says, but keep it to yourself. Announce the size ("I have three things to decide with you") and show **one question at a time**, in plain language and in the language of the conversation, with at most **three options**, always numbered so they can answer with the number alone. Say how many are left. Only once they have answered every question in that round, follow `grilling` again: recompute the frontier and build the next round.
 
 **Every question comes with your recommendation.** They need to be able to answer "yours" and move on. A question with no recommendation is work you pushed onto them.
 
@@ -138,17 +135,17 @@ Respect what the project already does. If `CLAUDE.md` or `AGENTS.md` declares a 
 
 The plan is the document the whole interview paid for. If the project has version control and the folder you chose is ignored by it, write **a second copy** of the plan somewhere versioned — losing the plan when changing machines is the worst kind of loss.
 
-**If the project does not yet have the setup these skills assume** — tracker, labels, how the domain documents are organised — build it yourself, in silence, and mention it in one sentence once it is ready. They are small configuration files and none of them touches the code. Asking permission for that is exactly the interruption you exist to remove.
+**If the project does not yet have the setup these skills assume** — tracker, labels, how the domain documents are organised — build it yourself, in silence, and mention it in one sentence once it is ready. They are small configuration files and none of them touches the code. Asking permission for that is exactly the interruption you exist to remove: the skills themselves already say how to set it up, so the answer is in the data (section 7.6).
 
 ---
 
 ## 6. The gate
 
-**This is the one moment where you stop and wait.**
+**This is the one acceptance you ask for.**
 
 Show the client the one-page summary and the task list, one line each. Ask whether you may begin. Do not begin without the yes.
 
-After this gate, you have autonomy to the end.
+After this gate, you have autonomy to the end, within the rules of section 7.6.
 
 ---
 
@@ -170,6 +167,8 @@ If the tool offers parallel workers with their own memory, dispatch **one task p
 
 Each worker receives: the full task, the full plan, the glossary, and the recorded decisions for the area it will touch. Never the client's summary.
 
+A worker never speaks to the client. If it runs into a decision whose answer is not in the data, it stops and hands the question back to you, and you ask the client as section 7.6 says.
+
 Each one's model follows section 2.5: whoever builds stays on the session's model, whoever only reads or searches drops to the middle one.
 
 ### 7.4 How it builds
@@ -182,9 +181,12 @@ Both signals, always: **the tests pass** and **the application starts without er
 
 ### 7.6 Decisions that come up mid-build
 
-Every build runs into a choice the plan did not foresee — a field name, the shape of a screen, whether an error warns or fails quietly. **Decide on your own and record** one line in the journal, at `<work folder>/journal.md`, in plain language.
+Every build runs into a choice the plan did not foresee — a field name, the shape of a screen, whether an error warns or fails quietly. Look for the answer in the project's data first: the code, the glossary, the recorded decisions, the plan, what the client has already said.
 
-Stop and ask in **these four cases only**:
+- **The answer is in the data:** decide, record one line in the journal, at `<work folder>/journal.md`, in plain language, and tell the client at the next delivery which decision you took.
+- **The answer is not in the data:** ask them before going on, with your recommendation.
+
+Even with the answer in the data, stop and ask in these four cases:
 
 1. The decision contradicts something the client already said.
 2. It is expensive to reverse.

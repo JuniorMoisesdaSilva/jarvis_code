@@ -43,6 +43,16 @@ describe('the carried Claude Code pieces', () => {
     expect(fs.readFileSync(ADAPTER, 'utf8')).toContain("OUTPUT_STYLE = 'Resumo leigo'")
   })
 
+  it('describes the style in both languages, English being the one carried as is', () => {
+    // The style picker is interface, which is in the panel's language; Connect
+    // places the copy that matches the switch.
+    const front = fs.readFileSync(STYLE, 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---/)[1]
+    const english = front.match(/^description: (.+)$/m)?.[1]
+    const portuguese = front.match(/^description-pt: (.+)$/m)?.[1]
+    expect(english).toMatch(/^[\x20-\x7e]+$/)
+    expect(portuguese?.length).toBeGreaterThan(0)
+  })
+
   it('ships a non-empty status line script', () => {
     expect(fs.readFileSync(STATUS, 'utf8').trim().length).toBeGreaterThan(0)
   })
@@ -52,7 +62,7 @@ describe('the carried Claude Code pieces', () => {
     expect(typeof personality).toBe('object')
     // Exactly the keys the applier whitelists, and nothing that could be a token,
     // an allow-list, or a credential path.
-    const allowed = new Set(['model'])
+    const allowed = new Set(['model', 'viewMode'])
     for (const key of Object.keys(personality)) {
       expect(allowed.has(key), `personality.json carries a non-whitelisted key: ${key}`).toBe(true)
     }
@@ -62,11 +72,11 @@ describe('the carried Claude Code pieces', () => {
     // The PT/EN switch is what Claude Code answers in. A language in the carried
     // file would be a second source for the same answer, and the one the user
     // can see has to win — so the applier names both languages itself and
-    // whitelists only the model.
+    // whitelists only the model and the view.
     const personality = JSON.parse(fs.readFileSync(PERSONALITY, 'utf8'))
     expect('language' in personality).toBe(false)
     const adapter = fs.readFileSync(ADAPTER, 'utf8')
-    expect(adapter).toContain("PERSONALITY_KEYS = Object.freeze(['model'])")
+    expect(adapter).toContain("PERSONALITY_KEYS = Object.freeze(['model', 'viewMode'])")
     expect(adapter).toContain('languages.claudeName(language)')
   })
 })
@@ -104,5 +114,56 @@ describe('the carried Maestro', () => {
     const adapter = fs.readFileSync(new URL('../src/main/claude-config.js', import.meta.url), 'utf8')
     expect(adapter).toContain('brainDir')
     expect(adapter).not.toContain("'claude'")
+  })
+})
+
+describe('the carried plan tool', () => {
+  it('is told to the model by the style, with the tool’s full name', () => {
+    // The style is the part of the personality Claude Code reads in every
+    // conversation, so the instruction to use the plan tool lives there.
+    const style = fs.readFileSync(STYLE, 'utf8')
+    expect(style).toContain('mcp__jarvis__update_plan')
+    expect(style).toMatch(/three or more steps/)
+  })
+
+  it('names the server the way the approval matches it', async () => {
+    const { PLAN_TOOL } = await import('../src/core/hook-installer.js')
+    const adapter = fs.readFileSync(ADAPTER, 'utf8')
+    expect(adapter).toContain('PLAN_SERVER = planTool.SERVER')
+    expect(PLAN_TOOL).toBe('mcp__jarvis__update_plan')
+    expect(fs.existsSync(new URL('PLAN.js', MAESTRO))).toBe(true)
+  })
+})
+
+// The plan tool's names are written once, in src/core/plan-tool.js, and read
+// from there by the installer, the payload and Connect. The carried server and
+// the relay keep their own copies, because each must run on its own; these pin
+// the copies to the one definition.
+describe('the plan tool’s names', () => {
+  it('are one definition, read by the installer, the payload and Connect', async () => {
+    const names = await import('../src/core/plan-tool.js')
+    const { PLAN_TOOL } = await import('../src/core/hook-installer.js')
+    const { PLAN_TOOLS } = await import('../src/core/hook-payload.js')
+    expect(names.FULL_NAME).toBe(`mcp__${names.SERVER}__${names.TOOL}`)
+    expect(PLAN_TOOL).toBe(names.FULL_NAME)
+    expect(PLAN_TOOLS.has(names.FULL_NAME)).toBe(true)
+    for (const file of ['../src/core/hook-installer.js', '../src/core/hook-payload.js', '../src/main/claude-config.js']) {
+      const source = fs.readFileSync(new URL(file, import.meta.url), 'utf8')
+      expect(source, `${file} spells the name out`).not.toContain("'mcp__jarvis__update_plan'")
+      expect(source, `${file} spells the server out`).not.toContain("= 'jarvis'")
+    }
+  })
+
+  it('are the names the carried server offers', async () => {
+    const names = await import('../src/core/plan-tool.js')
+    const server = fs.readFileSync(new URL('PLAN.js', MAESTRO), 'utf8')
+    expect(server).toContain(`name: '${names.SERVER}'`)
+    expect(server).toContain(`name: '${names.TOOL}'`)
+  })
+
+  it('turn the relay into the approval by the installer’s own flag', async () => {
+    const { APPROVE_FLAG } = await import('../src/core/hook-installer.js')
+    const relay = fs.readFileSync(new URL('../src/main/helpers/hook-relay.js', import.meta.url), 'utf8')
+    expect(relay).toContain(`process.argv.includes('${APPROVE_FLAG}')`)
   })
 })

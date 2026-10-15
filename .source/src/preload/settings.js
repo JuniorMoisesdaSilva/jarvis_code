@@ -3,14 +3,11 @@
 // A preload runs sandboxed, and a sandboxed `require` reaches Electron's own
 // modules and nothing else — a relative path to the core throws, the bridge is
 // never built, and the sheet it belongs to comes up dead with no error in sight.
-// So the three facts below are read from `process`, which the sandbox does
-// provide, rather than worked out by the code that normally decides them.
+// So nothing here reaches past Electron: every fact the sheet needs is asked of
+// the main process.
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('jarvis', {
-  /** Which system the sheet is describing, so its links name the right place. */
-  platform: process.platform,
-  /** Whether this machine has voices of its own that Jarvis can reach. */
   close: () => ipcRenderer.send('settings:close'),
   readPreferences: () => ipcRenderer.invoke('preferences:read'),
   writePreferences: (patch) => ipcRenderer.invoke('preferences:write', patch),
@@ -25,4 +22,6 @@ contextBridge.exposeInMainWorld('jarvis', {
   removeHooks: () => ipcRenderer.invoke('hooks:remove'),
   act: (name, argument) => ipcRenderer.send('panel:action', name, argument),
   onTheme: (handler) => ipcRenderer.on('theme', (_event, name) => handler(name)),
+  onShown: (handler) => ipcRenderer.on('settings:shown', (_event, shape) => handler(shape)),
+  onEdit: (handler) => ipcRenderer.on('settings:edit', (_event, row) => handler(row)),
 })

@@ -18,12 +18,15 @@ const { clipboard, dialog, shell: systemShell } = require('electron')
 
 const { JarvisCore } = require('../core/jarvis-core')
 const { user } = require('../core/events')
-const { normalize, samePath } = require('../core/paths')
+const { normalize, samePath, within } = require('../core/paths')
 const languages = require('../core/language')
 const { defaultShell } = require('../core/platform')
+const connection = require('../core/connection')
+const { DECK_FONT } = require('../core/deck-chips')
+const { TERMINAL_FONT } = require('../core/button-look')
 
 const { createTerminal } = require('./terminal')
-const { createTranscript, recent: recentTranscripts } = require('./transcript')
+const { createTranscript } = require('./transcript')
 const speech = require('./speech')
 const dictation = require('./dictation')
 const sounds = require('./sounds')
@@ -33,8 +36,26 @@ const maestro = require('./maestro')
 const preferences = require('./preferences')
 const models = require('./models')
 const geometry = require('../core/geometry')
+const deckCore = require('../core/deck')
+const spine = require('../core/spine')
+const { createDeckFeed, hearAgentEvent, hearStatus } = require('./deck-feed')
 
 const HISTORY_LIMIT = 3
+
+/**
+ * What the Spine says, from the stored preferences: which Parts are on (a
+ * hidden one never is), their order, and which buttons are hidden. `deckBlocks`
+ * is the Deck's share of `parts`, which the Deck and the plan sounds read.
+ */
+function spineChoices(stored) {
+  const parts = spine.partsOn(stored)
+  return {
+    parts,
+    deckBlocks: Object.fromEntries(deckCore.BLOCKS.map((block) => [block.id, parts[block.id]])),
+    spineOrder: spine.cleanOrder(stored.spineOrder),
+    spineHidden: spine.cleanHidden(stored.spineHidden),
+  }
+}
 
 /**
  * @param win  the window handle (src/main/workspace.js createWindow).
@@ -56,6 +77,12 @@ function createSession({ win, deps }) {
     downloading: null,
     hooksInstalled: false,
     claudeApplied: false,
+    /** Hooks of ours that an older Jarvis wrote and Connect would write differently. */
+    hooksStale: false,
+    /** The folder of another Jarvis whose current hooks Claude Code carries; null when none does. */
+    hooksElsewhere: null,
+    /** Why the last Connect or Disconnect failed, for the Settings sheet; null once one succeeds. */
+    connectionProblem: null,
     /** Whether to offer this machine the skills package the Maestro prefers. */
     maestroOffer: false,
     /** Named on the card, so nobody has to take on trust what Install runs. */
@@ -68,17 +95,30 @@ function createSession({ win, deps }) {
     theme: 'dark',
     model: 'medium',
     shell: defaultShell(),
-    terminalFontSize: 13.5,
+    terminalFontSize: TERMINAL_FONT.size,
     speechRate: 0,
     readingVoice: null,
     recentReadings: [],
+    /** The answer the message is about, when it arrived while another window read. */
+    waitingReading: null,
     /** Whether new Sessions open already caught up from past conversations. */
-    useMemory: false,
     /** Which side the panel is on, and whether it is retracted. The window is
      * what applies these; the panel is told so it can draw itself the right way
      * round and point the mover at the edge it is going to next. */
     panelPosition: 'right',
     panelCollapsed: false,
+    /** Which Parts are on and in what order, the Deck blocks among them; see spineChoices. */
+    ...spineChoices(preferences.DEFAULTS),
+    /** Whether the Plan block's two sounds are silenced; one for every window. */
+    deckPlanMuted: false,
+    /** The Deck's own type size, in pixels; one for every window. */
+    deckFontSize: DECK_FONT.size,
+    /** How the Commands and the Skills look, and the Spine's text; one for every window. */
+    commandColumns: preferences.DEFAULTS.commandColumns,
+    skillColumns: preferences.DEFAULTS.skillColumns,
+    spineFontSize: preferences.DEFAULTS.spineFontSize,
+    commandFontSize: preferences.DEFAULTS.commandFontSize,
+    skillFontSize: preferences.DEFAULTS.skillFontSize,
   }
 
   let readingHistory = []
@@ -98,17 +138,37 @@ function createSession({ win, deps }) {
 
   // --- Talking to this Session's panes ---------------------------------------
 
-  function publish() {
-    const contents = win.panelContents()
-    if (contents) {
-      contents.send('state', {
-        ...core.state,
-        hasLiveSession: core.hasLiveSession,
-        ...surface,
-        languageLabel: languages.shortLabel(core.state.language),
-      })
+  /** Everything the Panel draws from, the Deck's block views included. */
+  function panelState() {
+    return {
+      ...core.state,
+      hasLiveSession: core.hasLiveSession,
+      ...surface,
+      deck: deck.view(),
+      languageLabel: languages.shortLabel(core.state.language),
     }
   }
+
+  function publish() {
+    // Whatever the reason for this publish, it carries the Deck as it is now,
+    // so a Deck publish still waiting has nothing left to say.
+    deck.sent()
+    const contents = win.panelContents()
+    if (contents) contents.send('state', panelState())
+  }
+
+  /**
+   * What the Claude Code in this Session is doing — the Deck. Its changes go
+   * out at most once every 250 ms; see deck-feed.js.
+   */
+  const deck = createDeckFeed({
+    publish,
+    holds: (sessionId) => core.state.activeSessionId === sessionId,
+    // A plan's sounds play in this window, the one the plan belongs to, and
+    // never while muted or while the Plan block is off.
+    chime: (sound) => sounds.planSounds.play(sound, win.panelContents()),
+    muted: () => surface.deckPlanMuted || !surface.deckBlocks.plan,
+  })
 
   function broadcastAppearance() {
     win.paintGround(surface.theme)
@@ -121,6 +181,7 @@ function createSession({ win, deps }) {
 
   function say(message) {
     surface.message = message
+    surface.waitingReading = null
     surface.problem = null
     publish()
   }
@@ -128,6 +189,15 @@ function createSession({ win, deps }) {
   function report(problem) {
     surface.problem = problem
     publish()
+  }
+
+  /**
+   * Text onto the clipboard. The clipboard is a promise in Electron 44; nothing
+   * waits on the write, but a rejection nobody catches ends the whole main
+   * process.
+   */
+  function toClipboard(text) {
+    clipboard.writeText(text).catch(() => report('Could not reach the clipboard.'))
   }
 
   function sendToPanel(channel, payload) {
@@ -212,7 +282,11 @@ function createSession({ win, deps }) {
 
   // --- Reading aloud ---------------------------------------------------------
 
-  function startReading(text, language, delay) {
+  /**
+   * `takeOver` is for a reading the user asked for by name: it stops whatever
+   * another window is reading instead of waiting behind it.
+   */
+  function startReading(text, language, delay, { takeOver = false } = {}) {
     cancelQueuedReading()
 
     if (speech.installedVoices().length === 0) {
@@ -233,7 +307,7 @@ function createSession({ win, deps }) {
     // One voice at a time across every window. If another window is already
     // reading, this answer does not cut it off: it waits in this window's
     // reading list, with a notice, to be read on request instead.
-    if (deps.isVoiceBusy(session)) {
+    if (!takeOver && deps.isVoiceBusy(session)) {
       deferReading(text)
       return
     }
@@ -289,25 +363,33 @@ function createSession({ win, deps }) {
    * it waits in the list as text, and is synthesised only if the user plays it.
    */
   function deferReading(text) {
-    pushReading({ id: `reading-${nextReadingId++}`, title: readingTitle(text), text, wav: null })
+    const id = `reading-${nextReadingId++}`
+    pushReading({ id, title: readingTitle(text), text, wav: null })
     surface.voice = null
     surface.message = languages.newAnswerNotice(core.state.language)
+    surface.waitingReading = id
     surface.problem = null
     // The core marked a reading as started; undo that, since nothing is reading.
     dispatch(user.speechFinished())
   }
 
   function replayReading(id) {
+    // Played, from the notice or the list: the notice about it has done its job.
+    if (surface.waitingReading === id) {
+      surface.message = null
+      surface.waitingReading = null
+    }
     const entry = readingHistory.find((each) => each.id === id)
     if (!entry) {
       surface.voice = null
       dispatch(user.speechFinished())
       return
     }
-    // A deferred answer kept only as text: read it now, from scratch. It obeys
-    // the same one-voice rule, so it waits again if another window is reading.
+    // A deferred answer kept only as text: read it now, from scratch. The user
+    // asked for this one, so it stops another window's reading rather than
+    // waiting behind it.
     if (!entry.wav && entry.text) {
-      startReading(entry.text, core.state.language, 0)
+      startReading(entry.text, core.state.language, 0, { takeOver: true })
       return
     }
     deps.acquireVoice(session)
@@ -445,52 +527,6 @@ function createSession({ win, deps }) {
     report(`Could not transcribe: ${message}`)
   }
 
-  // --- Memory ----------------------------------------------------------------
-
-  /**
-   * Whether this Session still owes the catch-up request. Set when a project
-   * opens with memory on, spent the moment Claude Code announces itself.
-   */
-  let memoryOwed = false
-
-  /**
-   * Type a request for Claude Code to read the project's last few conversation
-   * transcripts, so it catches up on what was done. Reads the .jarvis folder
-   * only here. Not submitted — the user reads it and presses Enter. Returns
-   * whether anything was typed.
-   */
-  function insertMemoryPrompt() {
-    if (!surface.projectPath) return false
-    const files = recentTranscripts(surface.projectPath, { exclude: scribe.current() })
-    if (files.length === 0) return false
-    const prompt = languages.recallConversationsPrompt(core.state.language, files)
-    return term.insert(prompt)
-  }
-
-  /**
-   * The catch-up request is for Claude Code, so it waits for Claude Code. Typed
-   * into the shell that opens with the project it was never a request at all —
-   * just a paragraph of English sitting at a PowerShell prompt, which is what
-   * it did before this waited.
-   *
-   * A compaction or a `/clear` also starts a session; neither is an opening,
-   * and neither wants to be met by a request to read three old conversations.
-   */
-  function payMemoryIfOwed({ source }) {
-    if (!memoryOwed) return
-    if (source !== null && source !== 'startup' && source !== 'resume') return
-    memoryOwed = false
-
-    // Held a moment: Claude Code has just printed its banner, and text typed
-    // into the input line before it is ready is text that lands nowhere.
-    setTimeout(() => {
-      if (insertMemoryPrompt()) {
-        win.focusTerminal()
-        say('Typed a request to read the last few conversations. Press Enter to send it.')
-      }
-    }, 1200)
-  }
-
   // --- Sessions --------------------------------------------------------------
 
   async function openSession() {
@@ -514,6 +550,7 @@ function createSession({ win, deps }) {
     // Each shell gets a name of its own: a session started in it is recognised
     // by it, even while Jarvis still holds one that ended without saying so.
     const terminal = crypto.randomUUID()
+    deck.clear()
     dispatch(user.projectOpened(normalize(projectPath), terminal))
 
     try {
@@ -542,19 +579,11 @@ function createSession({ win, deps }) {
       // Only costs a slower start next time.
     }
     say(null)
-
-    // With memory on, the Session owes a catch-up request. It is not typed here:
-    // what is running at this point is the shell, and the request is for Claude
-    // Code. It waits for Claude Code to open — see payMemoryIfOwed.
-    memoryOwed = settings().useMemory
   }
 
   function forgetOpenProject() {
     surface.projectName = null
     surface.projectPath = null
-    // The debt dies with the project: a catch-up request typed into the next
-    // one would be about conversations held somewhere else.
-    memoryOwed = false
     win.nameProject(null)
   }
 
@@ -567,14 +596,22 @@ function createSession({ win, deps }) {
     } catch {
       // Nothing worth stopping for.
     }
+    deck.clear()
     dispatch(user.projectClosed())
   }
 
   // --- Hooks -----------------------------------------------------------------
 
-  /** True when this Session owns the project a hook event came from. */
-  function matchesProject(workingDirectory) {
-    return surface.projectPath !== null && samePath(surface.projectPath, workingDirectory)
+  /**
+   * True when a hook event came from this Session's project, or a folder inside
+   * it. `exactly` asks for the project folder itself, so the registry can prefer
+   * a window open on that very folder over one open on a folder above it.
+   */
+  function matchesProject(workingDirectory, { exactly = false } = {}) {
+    if (surface.projectPath === null) return false
+    return exactly
+      ? samePath(workingDirectory, surface.projectPath)
+      : within(workingDirectory, surface.projectPath)
   }
 
   /** True when the event came from the terminal this Session opened. */
@@ -593,26 +630,17 @@ function createSession({ win, deps }) {
 
   /** Handle a hook event the registry has already decoded and routed here. */
   function receive(incoming) {
-    if (!incoming) return
+    hearAgentEvent(incoming, {
+      core,
+      deck,
+      remember: (sessionId) => preferences.store().rememberClaudeSession(sessionId),
+      run,
+    })
+  }
 
-    const effects = core.receive(incoming)
-    const wasOurs = core.state.activeSessionId === incoming.event.sessionId
-
-    // Claude Code has just opened in this project: the one moment the catch-up
-    // request has something that can read it.
-    if (wasOurs && incoming.event.type === 'sessionStarted') {
-      payMemoryIfOwed({ source: incoming.event.source ?? null })
-    }
-
-    if (wasOurs && incoming.event.type !== 'sessionEnded') {
-      try {
-        preferences.store().rememberClaudeSession(incoming.event.sessionId)
-      } catch {
-        // Not worth reporting: it only costs a slower reconnection.
-      }
-    }
-
-    run(effects)
+  /** A status-line reading the registry has routed here: for the Deck alone. */
+  function receiveStatus(reading) {
+    hearStatus(reading, { core, deck })
   }
 
   function refreshHookState() {
@@ -630,6 +658,16 @@ function createSession({ win, deps }) {
       surface.hooksInstalled = false
     }
     try {
+      surface.hooksStale = hooks.installer().isStale()
+    } catch {
+      surface.hooksStale = false
+    }
+    try {
+      surface.hooksElsewhere = hooks.installer().elsewhere()
+    } catch {
+      surface.hooksElsewhere = null
+    }
+    try {
       surface.claudeApplied = claudeConfig.configurator(core.state.language).isApplied()
     } catch {
       surface.claudeApplied = false
@@ -642,13 +680,21 @@ function createSession({ win, deps }) {
     publish()
   }
 
+  /** The two writers Connect and Disconnect order between them (src/core/connection.js). */
+  function connectionParts() {
+    return { personality: claudeConfig.configurator(core.state.language), hooks: hooks.installer() }
+  }
+
   function installHooks() {
     try {
-      hooks.installer().install()
-      claudeConfig.configurator(core.state.language).apply()
+      connection.connect(connectionParts())
+      surface.connectionProblem = null
       say('Jarvis is connected: it hears Claude Code, and reads its answers aloud.')
     } catch (error) {
-      report(error?.message ?? 'Could not write to Claude Code’s configuration.')
+      // Connect takes back what it did when it fails, so without this the sheet
+      // would simply go on saying what it said before, as if nothing was pressed.
+      surface.connectionProblem = error?.message ?? 'Could not write to Claude Code’s configuration.'
+      report(surface.connectionProblem)
     }
     deps.broadcastHookState()
   }
@@ -661,11 +707,15 @@ function createSession({ win, deps }) {
    * one it writes nothing to, and Connect will carry the language over anyway.
    * Claude Code reads the setting when a session starts, so the new language
    * arrives with the next session rather than mid-answer.
+   *
+   * The settings only: the plan server's entry does not depend on the language,
+   * and ~/.claude.json, which Claude Code keeps rewriting, is touched by Connect
+   * and Disconnect alone.
    */
   function followLanguage() {
     if (!surface.claudeApplied) return
     try {
-      claudeConfig.configurator(core.state.language).apply()
+      claudeConfig.configurator(core.state.language).apply({ servers: false })
     } catch (error) {
       report(error?.message ?? 'Could not write to Claude Code’s configuration.')
     }
@@ -674,11 +724,12 @@ function createSession({ win, deps }) {
 
   function removeHooks() {
     try {
-      claudeConfig.configurator(core.state.language).remove()
-      hooks.installer().uninstall()
+      connection.disconnect(connectionParts())
+      surface.connectionProblem = null
       say('Jarvis is disconnected, and Claude Code is back the way it was.')
     } catch (error) {
-      report(error?.message ?? 'Could not write to Claude Code’s configuration.')
+      surface.connectionProblem = error?.message ?? 'Could not write to Claude Code’s configuration.'
+      report(surface.connectionProblem)
     }
     deps.broadcastHookState()
   }
@@ -723,11 +774,18 @@ function createSession({ win, deps }) {
 
   function rememberAppearance(stored) {
     surface.theme = stored.theme ?? 'dark'
-    surface.terminalFontSize = stored.terminalFontSize ?? 13.5
+    surface.terminalFontSize = stored.terminalFontSize ?? TERMINAL_FONT.size
     surface.model = stored.model ?? models.DEFAULT
     surface.shell = stored.shell
     surface.speechRate = stored.speechRate ?? 0
-    surface.useMemory = Boolean(stored.useMemory)
+    Object.assign(surface, spineChoices(stored))
+    surface.deckPlanMuted = stored.deckPlanMuted === true
+    surface.deckFontSize = stored.deckFontSize ?? DECK_FONT.size
+    // How the Commands and the Skills look, and the Spine's text: stored with
+    // the rest, so every window draws them alike.
+    for (const key of ['commandColumns', 'skillColumns', 'spineFontSize', 'commandFontSize', 'skillFontSize']) {
+      surface[key] = stored[key]
+    }
     rememberPanelShape()
   }
 
@@ -743,9 +801,21 @@ function createSession({ win, deps }) {
   /** Tears the Session down: its shell, its log. The window is destroyed by the
    * registry. */
   function close() {
+    deck.stop()
     cancelQueuedReading()
     term.close()
     scribe.end()
+  }
+
+  /** One list's order stored by the preferences' `setter`, and every window redrawn. */
+  function storeOrder(setter, ids) {
+    if (!Array.isArray(ids)) return
+    try {
+      preferences.store()[setter](ids)
+    } catch (error) {
+      report(error?.message ?? 'Could not remember that order.')
+    }
+    deps.broadcastShortcuts?.()
   }
 
   // --- What the panes can ask for --------------------------------------------
@@ -784,6 +854,67 @@ function createSession({ win, deps }) {
       }
       dispatch(user.autoReadSet(Boolean(enabled)))
     },
+    /**
+     * One Part of the page, on or off, by its id — a Deck block or a section.
+     * Stored for every window, and every other window catches up at once.
+     */
+    setPart: (choice) => {
+      const part = spine.PARTS.find((each) => each.id === choice?.part)
+      if (!part) return
+      try {
+        preferences.write({ [part.preference]: Boolean(choice.on) })
+      } catch (error) {
+        report(error?.message ?? 'Could not remember that setting.')
+      }
+      Object.assign(surface, spineChoices(settings()))
+      publish()
+      deps.broadcastSpine?.()
+    },
+    /**
+     * The Spine's order, which is the page's, as a drop on the Spine sends it:
+     * made whole by spine.js (unknown ids dropped, missing ones appended) and
+     * stored for every window, every other window catching up at once.
+     */
+    setSpineOrder: (ids) => {
+      if (!Array.isArray(ids)) return
+      try {
+        preferences.write({ spineOrder: spine.cleanOrder(ids) })
+      } catch (error) {
+        report(error?.message ?? 'Could not remember that order.')
+      }
+      Object.assign(surface, spineChoices(settings()))
+      publish()
+      deps.broadcastSpine?.()
+    },
+    /** The Plan block's mute. Stored for every window, and every other window catches up at once. */
+    setDeckPlanMuted: (muted) => {
+      try {
+        preferences.write({ deckPlanMuted: Boolean(muted) })
+      } catch (error) {
+        report(error?.message ?? 'Could not remember that setting.')
+      }
+      surface.deckPlanMuted = settings().deckPlanMuted === true
+      publish()
+      deps.broadcastSpine?.()
+    },
+    /** Another window changed the Spine or the Plan's mute: catch up, if anything moved. */
+    reloadSpine: () => {
+      const stored = settings()
+      const now = spineChoices(stored)
+      const muted = stored.deckPlanMuted === true
+      const was = { parts: surface.parts, spineOrder: surface.spineOrder, spineHidden: surface.spineHidden }
+      const is = { parts: now.parts, spineOrder: now.spineOrder, spineHidden: now.spineHidden }
+      if (JSON.stringify(was) === JSON.stringify(is) && muted === surface.deckPlanMuted) return
+      Object.assign(surface, now)
+      surface.deckPlanMuted = muted
+      publish()
+    },
+    /**
+     * The Commands, or the Skills, in the order a drop in the Panel gives, by
+     * id. Stored for every window, and every window redraws.
+     */
+    setShortcutOrder: (ids) => storeOrder('setShortcutOrder', ids),
+    setSkillOrder: (ids) => storeOrder('setSkillOrder', ids),
     pressShortcut: (id) => {
       const found = surface.shortcuts.find((each) => each.id === id)
       if (found) dispatch(user.shortcutPressed(found))
@@ -793,18 +924,14 @@ function createSession({ win, deps }) {
       if (found) dispatch(user.shortcutPressed(found))
     },
     /**
-     * The memory toggle. When on, each new Session opens already caught up: it
-     * types a request for Claude Code to read the project's last few
-     * conversations. Stored like any other preference.
+     * The Memory button. Sends Claude Code a short request to read the
+     * project's latest conversations in its .jarvis folder, and submits it —
+     * pressed when Claude Code is the one listening, which the user can see.
      */
-    setUseMemory: (enabled) => {
-      try {
-        preferences.write({ useMemory: Boolean(enabled) })
-      } catch (error) {
-        report(error?.message ?? 'Could not remember that setting.')
+    recallConversations: () => {
+      if (!term.run(languages.recallConversationsPrompt(core.state.language))) {
+        report('There is no terminal open to send that to.')
       }
-      surface.useMemory = settings().useMemory
-      publish()
     },
     /**
      * The last answer, on the clipboard.
@@ -823,17 +950,27 @@ function createSession({ win, deps }) {
         report('There is no answer to copy yet.')
         return
       }
-      // The clipboard is a promise in Electron 44. Nothing waits on the write,
-      // but a rejection nobody catches ends the whole main process.
-      clipboard.writeText(text).catch(() => report('Could not reach the clipboard.'))
+      toClipboard(text)
     },
 
     /**
-     * What is on the clipboard, typed into the input line and left there.
+     * What the user selected in the terminal pane, on the clipboard — Ctrl+C
+     * with a selection, as in any Windows terminal.
+     */
+    copySelection: (text) => {
+      if (typeof text !== 'string' || text === '') return
+      toClipboard(text)
+    },
+
+    /**
+     * What is on the clipboard, pasted into the input line and left there.
      *
-     * Not submitted, for the same reason dictation is not: pressing Enter is
-     * the user's act, and Claude Code has tools that delete files. The cursor
-     * goes back to the terminal so the next thing typed lands after it.
+     * Handed to the pane rather than typed from here, so the button follows the
+     * same rule as Ctrl+V: whole where the program in front asked for bracketed
+     * paste, flattened where it did not. Never submitted either way, for the
+     * same reason dictation is not: pressing Enter is the user's act, and
+     * Claude Code has tools that delete files. The cursor goes back to the
+     * terminal so the next thing typed lands after it.
      */
     pasteIntoTerminal: async () => {
       let text = ''
@@ -847,11 +984,29 @@ function createSession({ win, deps }) {
         report('There is nothing on the clipboard to paste.')
         return
       }
-      if (!term.insert(text)) {
+      if (!term.offerPaste(text)) {
         report('Open a project first — there is no terminal to paste into.')
         return
       }
       win.focusTerminal()
+    },
+
+    /**
+     * A paste made in the terminal pane itself — Ctrl+V, Cmd+V, the Edit menu,
+     * a right click. The pane read the clipboard and knows whether the program
+     * in front asked for bracketed paste; `typed-text.js` decides what that
+     * makes of the text.
+     *
+     * An empty paste only arrives where the program asked for bracketed paste,
+     * and is sent on: it is how Claude Code is told to take an image from the
+     * clipboard. Nothing is said for it either way.
+     */
+    pasteFromTerminal: (paste) => {
+      const text = paste?.text
+      if (typeof text !== 'string') return
+      if (!term.paste(text, paste.bracketed === true)) {
+        report('Open a project first — there is no terminal to paste into.')
+      }
     },
     /**
      * The project's own folder, in the machine's file browser.
@@ -872,6 +1027,16 @@ function createSession({ win, deps }) {
     },
     focusTerminal: () => win.focusTerminal(),
     openSettings: () => win.showSettings(),
+    /**
+     * A right click on a Command, or a Skill, in the Panel: Settings opened at
+     * its row, ready to edit.
+     */
+    editShortcut: (id) => {
+      if (surface.shortcuts.some((each) => each.id === id)) win.editRow('shortcuts', id)
+    },
+    editSkill: (id) => {
+      if (surface.skills.some((each) => each.id === id)) win.editRow('skills', id)
+    },
     closeSettings: () => win.hideSettings(),
     toggleSettings: () => win.toggleSettings(),
     releaseFocus: () => win.focusTerminal(),
@@ -895,8 +1060,12 @@ function createSession({ win, deps }) {
      * `nextPosition`, and ADR 0009 for why this is a button and not a key
      * combination.
      */
-    movePanel: () => {
-      const shape = win.setPanelPosition(geometry.nextPosition(surface.panelPosition))
+    movePanel: () => actions.placePanel(geometry.nextPosition(surface.panelPosition)),
+
+    /** The Panel put on one side by name — from Settings' four drawings. */
+    placePanel: (position) => {
+      if (!geometry.isPosition(position)) return
+      const shape = win.setPanelPosition(position)
       rememberPanelShape(shape)
       storeShape({ panelPosition: shape.position })
       publish()
@@ -921,6 +1090,7 @@ function createSession({ win, deps }) {
     dismissMessage: () => {
       core.clearNotice()
       surface.message = null
+      surface.waitingReading = null
       surface.problem = null
       publish()
     },
@@ -983,12 +1153,7 @@ function createSession({ win, deps }) {
     },
     terminalInput: (data) => term.typeFromUser(data),
     terminalResize: ({ cols, rows }) => term.resize(cols, rows),
-    state: () => ({
-      ...core.state,
-      hasLiveSession: core.hasLiveSession,
-      ...surface,
-      languageLabel: languages.shortLabel(core.state.language),
-    }),
+    state: panelState,
     voices: () => speech.installedVoices(),
     voicesWhenKnown: async () => {
       for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -1019,6 +1184,7 @@ function createSession({ win, deps }) {
     ownsClaudeSession,
     hasActiveSession,
     receive,
+    receiveStatus,
     playAudio,
     speechFinished,
     stopReadingLocally,

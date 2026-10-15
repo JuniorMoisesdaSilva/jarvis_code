@@ -91,6 +91,110 @@ terminal.focus()
 window.jarvis.onData((chunk) => terminal.write(chunk))
 terminal.onData((data) => window.jarvis.send(data))
 
+/**
+ * A paste, sent on with what xterm knows of the program in front.
+ *
+ * xterm brackets a paste only when the program asked for it and the pane has
+ * not been told to ignore the request, and takes none at all while input is
+ * off; this keeps both of its rules. It also does what xterm's own paste did
+ * after sending: the selection goes, and the view jumps to the prompt so the
+ * pasted text is where the user is looking.
+ *
+ * Where the program asked for bracketed paste, an empty one is still sent —
+ * Claude Code reads it as "take the image on the clipboard". Anywhere else it
+ * means nothing, and nothing is sent.
+ */
+function pasteText(text) {
+  if (terminal.options.disableStdin) return
+  const bracketed = terminal.modes.bracketedPasteMode && !terminal.options.ignoreBracketedPasteMode
+  if (text === '' && !bracketed) return
+  window.jarvis.paste(text, bracketed)
+  terminal.clearSelection()
+  terminal.scrollToBottom()
+}
+
+/**
+ * Every paste into the pane, by whatever route it came: Ctrl+V, Cmd+V, the Edit
+ * menu, a right click. All of them end as this one event, and it is taken here,
+ * ahead of xterm, whose own paste would type the text with a line break as
+ * Enter wherever the program in front had not asked for bracketed paste — and
+ * type a closing marker inside the text as keys where it had.
+ *
+ * The pane is the one side that can see that mode, so it says, and the main
+ * process decides what the text becomes (`core/typed-text.js`).
+ */
+document.getElementById('terminal').addEventListener(
+  'paste',
+  (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    pasteText(event.clipboardData?.getData('text/plain') ?? '')
+  },
+  true,
+)
+
+/** The panel's Paste button: main read the clipboard, and it arrives here. */
+window.jarvis.onPaste(pasteText)
+
+/**
+ * The letter a Ctrl chord names. The layout's own letter where it is a Latin
+ * one, so Ctrl+C on Dvorak is the key marked C; the physical key where it is
+ * not, so Ctrl+C on a Russian layout is still Ctrl+C.
+ */
+function chordLetter(event) {
+  if (/^[a-z]$/i.test(event.key)) return event.key.toLowerCase()
+  const physical = /^Key([A-Z])$/.exec(event.code)
+  return physical ? physical[1].toLowerCase() : null
+}
+
+/**
+ * Ctrl+C and Ctrl+V, as a Windows terminal answers them.
+ *
+ * Left to itself xterm sends both to the shell as control characters, so the
+ * keys did nothing a person expected. Ctrl+C copies when something is selected
+ * and is the interrupt when nothing is. A selection costs one press: the copy
+ * clears it, so the next Ctrl+C stops Claude Code. Typing and pasting clear it
+ * too, so only a selection made since the last key can stand in the way. A
+ * Ctrl+C held down copies once and stays quiet until it is let go, or its
+ * repeats would interrupt as soon as the copy cleared the selection. Ctrl+V is
+ * left to the browser, whose paste arrives at the one handler above. The Shift
+ * variants do the same, for the hands that learned them elsewhere.
+ */
+// Set by the keydown that copied, until that key is let go. Only the
+// repeats are swallowed, so a keyup lost to a change of window costs nothing:
+// the next fresh press is the interrupt it always was.
+let copying = false
+terminal.attachCustomKeyEventHandler((event) => {
+  if (copying && chordLetter(event) === 'c') {
+    if (event.type === 'keyup') {
+      copying = false
+      return false
+    }
+    if (event.repeat) {
+      event.preventDefault()
+      return false
+    }
+    copying = false
+  }
+  if (!event.ctrlKey || event.altKey || event.metaKey) return true
+  const letter = chordLetter(event)
+
+  if (letter === 'c' && (terminal.hasSelection() || event.shiftKey)) {
+    if (event.type === 'keydown') {
+      event.preventDefault()
+      copying = true
+      window.jarvis.copy(terminal.getSelection())
+      terminal.clearSelection()
+    }
+    return false
+  }
+
+  // Not prevented: the browser's own paste is what raises the event above.
+  if (letter === 'v') return false
+
+  return true
+})
+
 // --- Theme -------------------------------------------------------------------
 
 function applyTheme(name) {
@@ -116,13 +220,6 @@ window.jarvis.onFontSize((size) => {
   // laid out again, and fitting before that divides the pane by the old cell —
   // which is how a larger font ended up with more rows than the pane can show.
   requestAnimationFrame(fitAndReport)
-})
-
-// The Settings sheet laps over this column rather than pushing it aside, so the
-// column steps back instead of being resized — nothing reflows, and it is
-// obvious which of the two is being used.
-window.jarvis.onDim((dimmed) => {
-  document.body.classList.toggle('dimmed', dimmed)
 })
 
 // The pane outlives the Session now, so it has to be emptied between projects.

@@ -23,26 +23,19 @@ function writeRaw(contents) {
 }
 
 /**
- * A project path this machine could have written.
+ * A project path Windows could have written.
  *
  * What is stored is checked for shape rather than existence — isNativePath, in
- * the core's platform file — so a Windows path handed to a run on a Mac is thrown
- * away before it can be read back, and the test would be measuring the guard
- * instead of the memory it is named for. Spelt per platform, these say the same
- * thing on both machines.
+ * the core's platform file — so a POSIX path is thrown away before it can be
+ * read back, and the test would be measuring the guard instead of the memory it
+ * is named for.
  */
 function project(name) {
-  return process.platform === 'win32' ? `C:\\p\\${name}` : `/p/${name}`
+  return `C:\\p\\${name}`
 }
 
-/**
- * A shell name this machine could have stored. The same trap as project(): a
- * name ending .exe is a Windows program, and a Mac reading one drops it. The
- * tests below are about how a value is kept, not about whose it is, so they say
- * it in the local dialect and leave the cross-platform question to the block
- * that is named for it.
- */
-const A_SHELL = process.platform === 'win32' ? 'bash.exe' : 'bash'
+/** A shell name Windows could have stored, other than the default. */
+const A_SHELL = 'bash.exe'
 
 describe('a file that has not been written yet', () => {
   it('gives the defaults', () => {
@@ -342,45 +335,19 @@ describe('a stored voice this machine had of its own', () => {
   })
 })
 
-// The preferences file travels inside the folder — portable by copy — so a
-// machine opens one holding the other machine's answers. Two of the fields name
-// a place, and a place from the other platform is not somewhere this one can go.
-describe('a file written on the other platform', () => {
+// The preferences file is plain JSON, and can be edited by hand or carried in
+// from somewhere else. Two of the fields name a place, and a POSIX path is not
+// somewhere Windows can go.
+describe('a file holding paths Windows cannot use', () => {
   const WINDOWS = { platform: 'win32', env: {} }
-  const MAC = { platform: 'darwin', env: { SHELL: '/bin/zsh' } }
 
-  it("drops the Mac's shell when read on Windows", () => {
+  it('drops a POSIX shell', () => {
     const clean = sanitize({ shell: '/bin/zsh' }, WINDOWS)
     expect(clean.shell).toBe('powershell.exe')
   })
 
-  it("drops Windows' shell when read on a Mac", () => {
-    const clean = sanitize({ shell: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe' }, MAC)
-    expect(clean.shell).toBe('/bin/zsh')
-  })
-
-  // The pair that shipped broken. What Windows stores is not a path at all —
-  // defaultShell there answers with the bare name — and a bare name used to
-  // belong to whoever was asking, so the Mac kept it and opened a Session on a
-  // program it does not have. Silently, too: the exec fails inside node-pty's
-  // forked child, so nothing throws and nothing is written anywhere.
-  it('drops the shell Windows stores, which is a bare name', () => {
-    expect(sanitize({ shell: 'powershell.exe' }, MAC).shell).toBe('/bin/zsh')
-    expect(sanitize({ shell: 'pwsh.exe' }, MAC).shell).toBe('/bin/zsh')
-  })
-
-  it('keeps a bare name the platform reading it could own', () => {
-    expect(sanitize({ shell: 'powershell.exe' }, WINDOWS).shell).toBe('powershell.exe')
-    expect(sanitize({ shell: 'zsh' }, MAC).shell).toBe('zsh')
-  })
-
-  it("drops the Mac's last project when read on Windows", () => {
+  it('drops a POSIX last project', () => {
     const clean = sanitize({ projectPath: '/Users/someone/Code/Curate Project' }, WINDOWS)
-    expect(clean.projectPath).toBeNull()
-  })
-
-  it("drops Windows' last project when read on a Mac", () => {
-    const clean = sanitize({ projectPath: 'C:\\Projects\\CPD Audit' }, MAC)
     expect(clean.projectPath).toBeNull()
   })
 
@@ -401,8 +368,8 @@ describe('a file written on the other platform', () => {
   })
 
   it('keeps everything that names no place', () => {
-    // The point of one travelling file: the voice, the theme and the buttons
-    // are the same wherever it is opened, and only the paths are local.
+    // Only the paths are checked: the voice, the theme and the buttons stand
+    // whatever else in the file was refused.
     const clean = sanitize(
       { shell: '/bin/zsh', theme: 'iron', model: 'medium', language: ENGLISH },
       WINDOWS,
@@ -413,7 +380,7 @@ describe('a file written on the other platform', () => {
     expect(clean.language).toBe(ENGLISH)
   })
 
-  it("keeps this platform's own answers", () => {
+  it('keeps Windows paths', () => {
     const clean = sanitize(
       { shell: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe', projectPath: 'C:\\Projects\\CPD Audit' },
       WINDOWS,
@@ -423,9 +390,10 @@ describe('a file written on the other platform', () => {
     expect(clean.projectPath).toBe('C:\\Projects\\CPD Audit')
   })
 
-  it('keeps a bare shell name, which belongs to whoever is asking', () => {
+  it('keeps a bare shell name, which names no place', () => {
+    expect(sanitize({ shell: 'powershell.exe' }, WINDOWS).shell).toBe('powershell.exe')
     expect(sanitize({ shell: 'cmd.exe' }, WINDOWS).shell).toBe('cmd.exe')
-    expect(sanitize({ shell: 'bash' }, MAC).shell).toBe('bash')
+    expect(sanitize({ shell: 'bash' }, WINDOWS).shell).toBe('bash')
   })
 })
 
@@ -467,12 +435,226 @@ describe('where the panel sits', () => {
     expect(sanitize({ panelCollapsed: 'yes' }).panelCollapsed).toBe(false)
   })
 
-  it('travels: where the panel sits names no place on the disk', () => {
+  it('is kept whatever the machine: where the panel sits names no place on the disk', () => {
     const clean = sanitize({ panelPosition: 'top', bandHeight: 200 }, {
       platform: 'win32',
       env: {},
     })
     expect(clean.panelPosition).toBe('top')
     expect(clean.bandHeight).toBe(200)
+  })
+})
+
+// The Deck's five switches. Every block but the Gauge starts off; the Gauge
+// starts on, for it shows what the status line under the terminal used to.
+// Each switch stands on its own: one bad hand-edit turns off its own block
+// and no other.
+describe('the Deck switches', () => {
+  const SWITCHES = ['deckPlan', 'deckAgents', 'deckLoops', 'deckEvents']
+
+  it('are all off to start, but the Gauge', () => {
+    for (const name of SWITCHES) expect(preferences.read()[name]).toBe(false)
+    expect(preferences.read().deckGauge).toBe(true)
+  })
+
+  it('remember the Gauge switched off', () => {
+    preferences.write({ deckGauge: false })
+    expect(preferences.read().deckGauge).toBe(false)
+  })
+
+  it('take a Gauge switch that is not a yes or a no as on, its own default', () => {
+    writeRaw(JSON.stringify({ deckGauge: 'off' }))
+    expect(preferences.read().deckGauge).toBe(true)
+  })
+
+  it('are remembered', () => {
+    preferences.write({ deckEvents: true, deckPlan: true })
+    expect(preferences.read().deckEvents).toBe(true)
+    expect(preferences.read().deckPlan).toBe(true)
+    expect(preferences.read().deckAgents).toBe(false)
+  })
+
+  it('refuse a value that is not a yes or a no, each on its own', () => {
+    const stored = Object.fromEntries(SWITCHES.map((name) => [name, true]))
+    stored.deckLoops = 'yes'
+    writeRaw(JSON.stringify(stored))
+
+    const read = preferences.read()
+    expect(read.deckLoops).toBe(false)
+    for (const name of SWITCHES.filter((each) => each !== 'deckLoops')) {
+      expect(read[name]).toBe(true)
+    }
+  })
+
+  it('forget the two blocks that are gone', () => {
+    writeRaw(JSON.stringify({ deckPermissions: true, deckReceipt: true }))
+    expect('deckPermissions' in preferences.read()).toBe(false)
+    expect('deckReceipt' in preferences.read()).toBe(false)
+  })
+})
+
+// The Plan block's mute: off to start, so the sounds play; one for every
+// window; refused on its own when it is not a yes or a no.
+describe('the plan sounds’ mute', () => {
+  it('is off to start', () => {
+    expect(preferences.read().deckPlanMuted).toBe(false)
+  })
+
+  it('is remembered', () => {
+    preferences.write({ deckPlanMuted: true })
+    expect(preferences.read().deckPlanMuted).toBe(true)
+  })
+
+  it('refuses a value that is not a yes or a no, and nothing else with it', () => {
+    writeRaw(JSON.stringify({ deckPlanMuted: 'yes', deckEvents: true }))
+    const read = preferences.read()
+    expect(read.deckPlanMuted).toBe(false)
+    expect(read.deckEvents).toBe(true)
+  })
+})
+
+// The Deck's type size, its own and not the terminal's: a whole number of
+// pixels from 9 to 14, starting at 10 — a pixel under the 11 the Deck was drawn
+// at before it was a setting.
+describe('the Deck’s type size', () => {
+  it('starts at 10', () => {
+    expect(preferences.read().deckFontSize).toBe(10)
+  })
+
+  it('has one default and one range, the ones the Panel and the Settings sheet read', async () => {
+    const { DECK_FONT } = await import('../src/core/deck-chips.js')
+    expect(DECK_FONT).toEqual({ size: 10, min: 9, max: 14 })
+    expect(preferences.read().deckFontSize).toBe(DECK_FONT.size)
+    for (const file of ['../src/main/app-model.js', '../src/renderer/panel.js', '../src/renderer/settings.js']) {
+      const source = fs.readFileSync(new URL(file, import.meta.url), 'utf8')
+      expect(source, `${file} has its own default`).not.toMatch(/deckFontSize[^\n]*\b10\b/)
+    }
+  })
+
+  it('is remembered, apart from the terminal’s', () => {
+    preferences.write({ deckFontSize: 13 })
+    expect(preferences.read().deckFontSize).toBe(13)
+    expect(preferences.read().terminalFontSize).toBe(13.5)
+  })
+
+  it('takes both ends of its range', () => {
+    expect(sanitize({ deckFontSize: 9 }).deckFontSize).toBe(9)
+    expect(sanitize({ deckFontSize: 14 }).deckFontSize).toBe(14)
+  })
+
+  it('refuses a size outside the range, a fraction or a word, on its own', () => {
+    for (const bad of [8, 15, 10.5, '12', null]) {
+      const clean = sanitize({ deckFontSize: bad, terminalFontSize: 16 })
+      expect(clean.deckFontSize).toBe(10)
+      expect(clean.terminalFontSize).toBe(16)
+    }
+  })
+})
+
+// The Spine: which Parts are on, in what order, and which buttons are hidden.
+// One set for every window, like the Deck switches it carries on from.
+describe('the Spine', () => {
+  it('starts with Commands, Skills, Recent readings and Session on, so the Panel opens as it did', () => {
+    const read = preferences.read()
+    for (const name of ['partCommands', 'partSkills', 'partReadings', 'partSession']) {
+      expect(read[name]).toBe(true)
+    }
+  })
+
+  it('remembers a section taken away, and refuses a switch that is not a yes or a no on its own', () => {
+    preferences.write({ partSkills: false })
+    expect(preferences.read().partSkills).toBe(false)
+    writeRaw(JSON.stringify({ partReadings: 'no', partSession: false }))
+    expect(preferences.read().partReadings).toBe(true)
+    expect(preferences.read().partSession).toBe(false)
+  })
+
+  it('starts in the default order, with nothing hidden', () => {
+    expect(preferences.read().spineOrder).toEqual([
+      'gauge', 'events', 'plan', 'agents', 'loops', 'commands', 'skills', 'readings', 'session',
+    ])
+    expect(preferences.read().spineHidden).toEqual([])
+  })
+
+  it('keeps a stored order, dropping what it does not know and appending what is missing', () => {
+    writeRaw(JSON.stringify({ spineOrder: ['session', 'nonsense', 'plan'] }))
+    expect(preferences.read().spineOrder).toEqual([
+      'session', 'plan', 'gauge', 'events', 'agents', 'loops', 'commands', 'skills', 'readings',
+    ])
+  })
+
+  it('falls back to the default order and to nothing hidden when either is not a list', () => {
+    writeRaw(JSON.stringify({ spineOrder: 'plan', spineHidden: { plan: true }, deckPlan: true }))
+    const read = preferences.read()
+    expect(read.spineOrder[0]).toBe('gauge')
+    expect(read.spineHidden).toEqual([])
+    expect(read.deckPlan).toBe(true)
+  })
+
+  it('keeps the hidden buttons it knows', () => {
+    preferences.write({ spineHidden: ['loops', 'loops', 'nonsense'] })
+    expect(preferences.read().spineHidden).toEqual(['loops'])
+  })
+
+  it('keeps the Deck switches under the keys they always had, so an upgrade keeps them', () => {
+    writeRaw(JSON.stringify({ deckPlan: true, deckEvents: true }))
+    const read = preferences.read()
+    expect(read.deckPlan).toBe(true)
+    expect(read.deckEvents).toBe(true)
+    expect(read.partCommands).toBe(true)
+  })
+})
+
+// How the Commands and the Skills look, and the Spine's text: one set for every
+// window, each value refused on its own.
+describe('the buttons columns and the text sizes', () => {
+  it('start at three columns each, the Spine at 9 and the buttons at 12', () => {
+    expect(preferences.read()).toMatchObject({
+      commandColumns: 3,
+      skillColumns: 3,
+      spineFontSize: 9,
+      commandFontSize: 12,
+      skillFontSize: 12,
+    })
+  })
+
+  it('take both ends of each range', () => {
+    const low = { commandColumns: 1, skillColumns: 1, spineFontSize: 8, commandFontSize: 10, skillFontSize: 10 }
+    const high = { commandColumns: 5, skillColumns: 5, spineFontSize: 14, commandFontSize: 16, skillFontSize: 16 }
+    expect(sanitize(low)).toMatchObject(low)
+    expect(sanitize(high)).toMatchObject(high)
+  })
+
+  it('refuse a value outside its range, a fraction or a word, on its own', () => {
+    const clean = sanitize({ commandColumns: 6, skillColumns: 2, spineFontSize: 15, commandFontSize: 12.5, skillFontSize: '14' })
+    expect(clean).toMatchObject({ commandColumns: 3, skillColumns: 2, spineFontSize: 9, commandFontSize: 12, skillFontSize: 12 })
+  })
+})
+
+describe('reordering the Commands and the Skills', () => {
+  it('stores the built-ins in the new order, since an empty list means the built-ins', () => {
+    const ids = preferences.shortcuts().map((each) => each.id)
+    preferences.setShortcutOrder([ids[6], ...ids.slice(0, 6)])
+    expect(preferences.read().shortcuts.map((each) => each.id)).toEqual([ids[6], ...ids.slice(0, 6)])
+    expect(preferences.shortcuts()[0]).toMatchObject({ label: 'Exit', glyph: 'sign-out' })
+  })
+
+  it('keeps a button the order does not name, and drops an id it does not know', () => {
+    preferences.setSkills([
+      { id: 'a', label: 'tdd', command: '/tdd', submits: false, glyph: 'test-tube' },
+      { id: 'b', label: 'grill', command: '/grill', submits: false, glyph: null },
+      { id: 'c', label: 'review', command: '/review', submits: false, glyph: 'eye' },
+    ])
+    preferences.setSkillOrder(['c', 'nonsense', 'a'])
+    expect(preferences.skills().map((each) => [each.id, each.glyph])).toEqual([
+      ['c', 'eye'],
+      ['a', 'test-tube'],
+      ['b', null],
+    ])
+  })
+
+  it('gives an old stored Skill without an icon the Skill its own', () => {
+    writeRaw(JSON.stringify({ skills: [{ id: 'a', label: 'tdd', command: '/tdd', submits: false }] }))
+    expect(preferences.skills()[0].glyph).toBe('lightning')
   })
 })

@@ -8,10 +8,8 @@
 // exits. If Jarvis is not running it exits silently, because a hook that blocks
 // would hold up the agent itself.
 //
-// The channel is a named pipe on Windows and a socket file on macOS. Node's
-// `net` server and client take either as an address without being told which,
-// so only the name differs — and the socket file, unlike a pipe, is a real file
-// that outlives a crash and has to be swept away before listening again.
+// The channel is a named pipe, which Node's `net` server and client take as an
+// address like any other.
 
 const fs = require('node:fs')
 const net = require('node:net')
@@ -26,24 +24,7 @@ const {
   EVENTS,
   HELPER_FLAG,
 } = require('../core/hook-installer')
-const { channelAddress, isSocketFile } = require('./helpers/hook-channel')
-
-/**
- * Removes a socket file left by an instance that did not close cleanly.
- *
- * Without this, the second run of Jarvis after a crash listens on nothing: bind
- * refuses the address, the server errors, and every answer goes unspoken with
- * nothing on screen to say why.
- */
-function sweep() {
-  const address = channelAddress()
-  if (!isSocketFile(address)) return
-  try {
-    fs.unlinkSync(address)
-  } catch {
-    // Not there, or not ours to remove. Listening will say so if it matters.
-  }
-}
+const { channelAddress } = require('./helpers/hook-channel')
 
 function settingsFile() {
   return path.join(os.homedir(), '.claude', 'settings.json')
@@ -56,9 +37,8 @@ function settingsFile() {
 // found.
 const RELAY = onDisk(path.join(__dirname, 'helpers', 'hook-relay.js'))
 
-/** A batch file wants Windows line endings; a shell script wants Unix ones. */
+/** A batch file wants Windows line endings. */
 const CRLF = '\r\n'
-const LF = '\n'
 
 /**
  * Where the launcher is written. Beside the preferences, because it is
@@ -66,10 +46,11 @@ const LF = '\n'
  * names two absolute paths, and both of them move when the folder does.
  *
  * Under a name only this machine writes — see `launcherName` in the core. The
- * folder travels, and the launcher is the one thing in it that cannot.
+ * folder may be synced to other machines, and the launcher is the one thing in
+ * it that cannot be shared.
  */
 function launcherFile() {
-  const name = launcherName({ platform: process.platform, machine: os.hostname() })
+  const name = launcherName({ machine: os.hostname() })
   return path.join(require('./data-location').where().dataDir, name)
 }
 
@@ -86,24 +67,17 @@ function launcherFile() {
  * the hook command is, and the shell-specific part lives in a file whose own
  * interpreter is never in doubt.
  *
- * `%*` and `"$@"` forward the marker the command line carries. The relay ignores
- * it; dropping it here would only mean the launcher and the command disagree
- * about what was asked.
+ * `%*` forwards the marker the command line carries. The relay ignores it;
+ * dropping it here would only mean the launcher and the command disagree about
+ * what was asked.
  */
 function launcherContents() {
-  if (process.platform === 'win32') {
-    return [
-      '@echo off',
-      'set "ELECTRON_RUN_AS_NODE=1"',
-      `"${process.execPath}" "${RELAY}" %*`,
-      '',
-    ].join(CRLF)
-  }
   return [
-    '#!/bin/sh',
-    `ELECTRON_RUN_AS_NODE=1 exec "${process.execPath}" "${RELAY}" "$@"`,
+    '@echo off',
+    'set "ELECTRON_RUN_AS_NODE=1"',
+    `"${process.execPath}" "${RELAY}" %*`,
     '',
-  ].join(LF)
+  ].join(CRLF)
 }
 
 /**
@@ -115,8 +89,8 @@ function launcherContents() {
  * longer there. Since the hook command only ever names the launcher, fixing the
  * launcher is enough — Claude Code's settings never have to be touched again.
  *
- * The comparison is not an optimisation. This folder is often inside OneDrive or
- * iCloud, and rewriting an unchanged file on every start would have the sync
+ * The comparison is not an optimisation. This folder is often inside OneDrive,
+ * and rewriting an unchanged file on every start would have the sync
  * client uploading it on every start too.
  */
 function writeLauncher() {
@@ -129,8 +103,6 @@ function writeLauncher() {
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, contents, 'utf8')
-  // A shell script nobody may execute is a hook that fails on every event.
-  if (process.platform !== 'win32') fs.chmodSync(file, 0o755)
   return file
 }
 
@@ -206,7 +178,6 @@ function listen(onPayload) {
     server = null
   })
 
-  sweep()
   server.listen(channelAddress())
   return server
 }
@@ -215,7 +186,6 @@ function stopListening() {
   if (!server) return
   server.close()
   server = null
-  sweep()
 }
 
 // --- Being run as the helper ourselves ---------------------------------------

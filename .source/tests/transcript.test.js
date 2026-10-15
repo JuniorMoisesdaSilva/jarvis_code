@@ -154,41 +154,9 @@ describe('keeping the record out of version control', () => {
   })
 })
 
-describe('recalling the last few conversations, on request', () => {
-  it('lists the most recent logs newest first, as project-relative paths', () => {
-    const folder = path.join(project, '.jarvis')
-    fs.mkdirSync(folder, { recursive: true })
-    for (const name of ['2026-09-01-090000.md', '2026-09-02-090000.md', '2026-09-03-090000.md', '2026-09-04-090000.md']) {
-      fs.writeFileSync(path.join(folder, name), '# a conversation', 'utf8')
-    }
-    // something that is not a log is ignored
-    fs.writeFileSync(path.join(folder, 'notes.txt'), 'x', 'utf8')
-
-    expect(transcript.recent(project, { limit: 3 })).toEqual([
-      '.jarvis/2026-09-04-090000.md',
-      '.jarvis/2026-09-03-090000.md',
-      '.jarvis/2026-09-02-090000.md',
-    ])
-  })
-
-  it('leaves out the current conversation', () => {
-    const folder = path.join(project, '.jarvis')
-    fs.mkdirSync(folder, { recursive: true })
-    for (const name of ['2026-09-01-090000.md', '2026-09-02-090000.md']) {
-      fs.writeFileSync(path.join(folder, name), '# a conversation', 'utf8')
-    }
-    const mine = path.join(folder, '2026-09-02-090000.md')
-    expect(transcript.recent(project, { exclude: mine })).toEqual(['.jarvis/2026-09-01-090000.md'])
-  })
-
-  it('returns nothing when the project has no logs', () => {
-    expect(transcript.recent(project)).toEqual([])
-  })
-})
-
 describe('ending a Session', () => {
   // Nothing is copied anywhere. The record lives in the project it belongs to,
-  // which is also the only copy the Memory toggle ever reads.
+  // which is also the only copy the Memory button ever points at.
   it('closes the record and leaves it where it was written', () => {
     const own = transcript.createTranscript()
 

@@ -1,0 +1,704 @@
+{
+  "numStartups": 812,
+  "installMethod": "native",
+  "autoUpdates": false,
+  "hasSeenTasksHint": true,
+  "tipsHistory": {
+    "new-user-warmup": 1
+  },
+  "firstStartTime": "2026-01-01T00:00:00.000Z",
+  "machineID": "0000",
+  "userID": "0000",
+  "hasCompletedOnboarding": true,
+  "lastOnboardingVersion": "2.0.0",
+  "projects": {
+    "C:/Projects/P0": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P1": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P2": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P3": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P4": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P5": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P6": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P7": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P8": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P9": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P10": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P11": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P12": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P13": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P14": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P15": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P16": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P17": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P18": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P19": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P20": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P21": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P22": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P23": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P24": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P25": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P26": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P27": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P28": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P29": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P30": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P31": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P32": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P33": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P34": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P35": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P36": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P37": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P38": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    },
+    "C:/Projects/P39": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "lastCost": 0.5,
+      "lastDuration": 1000,
+      "exampleFiles": [
+        "a.js",
+        "b.js"
+      ],
+      "history": []
+    }
+  },
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-0000-0000-000000000000",
+    "emailAddress": "someone@example.com"
+  },
+  "claudeAiMcpEverConnected": [],
+  "cachedGrowthBookFeatures": {},
+  "skillUsage": {},
+  "pluginPanes": {}
+}

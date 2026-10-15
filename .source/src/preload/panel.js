@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('jarvis', {
   act: (name, argument) => ipcRenderer.send('panel:action', name, argument),
   onState: (handler) => ipcRenderer.on('state', (_event, state) => handler(state)),
   onSound: (handler) => ipcRenderer.on('sound:play', (_event, sound) => handler(sound)),
+  onChime: (handler) => ipcRenderer.on('sound:chime', (_event, wav) => handler(wav)),
   onVoicePlay: (handler) => ipcRenderer.on('voice:play', (_event, wav) => handler(wav)),
   onVoiceStop: (handler) => ipcRenderer.on('voice:stop', () => handler()),
   onVoicePause: (handler) => ipcRenderer.on('voice:pause', () => handler()),

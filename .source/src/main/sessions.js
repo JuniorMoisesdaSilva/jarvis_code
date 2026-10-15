@@ -15,7 +15,7 @@
 
 const { createWindow } = require('./workspace')
 const { createSession } = require('./app-model')
-const { decode } = require('../core/hook-payload')
+const { deliver } = require('./hook-routing')
 const speech = require('./speech')
 const dictation = require('./dictation')
 const hooks = require('./hooks')
@@ -73,7 +73,17 @@ function isVoiceBusy(session) {
   return Boolean(voiceOwner && voiceOwner !== session && voiceOwner.isReading())
 }
 
-const deps = { acquireVoice, acquireMic, broadcastHookState, isVoiceBusy }
+/** The Spine is one choice for every window: each catches up when one changes it. */
+function broadcastSpine() {
+  for (const session of all) session.actions.reloadSpine()
+}
+
+/** The Commands and the Skills are one list for every window: each redraws when one reorders them. */
+function broadcastShortcuts() {
+  for (const session of all) session.actions.reloadShortcuts()
+}
+
+const deps = { acquireVoice, acquireMic, broadcastHookState, broadcastSpine, broadcastShortcuts, isVoiceBusy }
 
 /** Wire the shared adapters once, routing each into the right Session. */
 function wireSharedAdapters() {
@@ -101,39 +111,7 @@ function wireSharedAdapters() {
     onFailed: (message) => micOwner?.dictationFailed(message),
   })
 
-  hooks.listen((payload) => {
-    const incoming = decode(payload)
-    if (!incoming) return
-    const session = routeHook(incoming)
-    if (session) session.receive(incoming)
-  })
-}
-
-/**
- * Which Session a hook event belongs to. An event from the terminal a window
- * opened is that window's, whatever it was holding. Otherwise a Claude Code
- * session a window has already adopted wins by its id, so two windows open on
- * the same folder each keep their own conversation. A first event — no window
- * owns that id yet — goes to a window on that folder that has not adopted a
- * session, then to any window on that folder.
- */
-function routeHook(incoming) {
-  const sessionId = incoming.event.sessionId
-  const cwd = incoming.workingDirectory
-
-  for (const session of all) {
-    if (session.ownsTerminal(incoming.terminal ?? null)) return session
-  }
-  for (const session of all) {
-    if (session.ownsClaudeSession(sessionId)) return session
-  }
-  for (const session of all) {
-    if (session.matchesProject(cwd) && !session.hasActiveSession()) return session
-  }
-  for (const session of all) {
-    if (session.matchesProject(cwd)) return session
-  }
-  return null
+  hooks.listen((payload) => deliver(payload, all))
 }
 
 /** Opens a new window and its Session, and returns it. */

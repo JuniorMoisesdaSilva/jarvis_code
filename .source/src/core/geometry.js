@@ -22,8 +22,8 @@ const POSITIONS = Object.freeze(['left', 'top', 'right', 'bottom'])
 const RAIL = 316
 const RAIL_MAX = 520
 
-/** A band's height. 148 is what the three rows of buttons, the dock and a
- * two-line footer come to; below it a row would be cut rather than dropped. */
+/** A band's height. 148 is what the three rows of buttons and the dock come to
+ * with the Spine's 36-point row along it; below it a row would be cut. */
 const BAND = 148
 const BAND_MAX = 300
 
@@ -32,9 +32,6 @@ const COLLAPSED = 52
 
 /** Below this the terminal stops being usable, so the panel gives way first. */
 const TERMINAL_FLOOR = 260
-
-/** The Settings sheet, when it is open. Wide enough for its text fields. */
-const SETTINGS = 396
 
 function isPosition(value) {
   return POSITIONS.includes(value)
@@ -116,17 +113,10 @@ function layOut({
     else terminal.y = measure
   }
 
-  // The sheet keeps its own shape whatever the panel is doing: 396 points wide
-  // and the full height is what buys its text fields their width, and a band
-  // has nothing that shape to cover. It anchors to the edge the panel is on so
-  // it lands over the rail rather than across the window from it.
-  const sheet = settingsOpen ? Math.min(SETTINGS, width) : 0
-  const settings = {
-    x: settled === 'left' ? 0 : width - sheet,
-    y: 0,
-    width: sheet,
-    height,
-  }
+  // The Settings sheet is the whole window while it is open, and nothing at all
+  // while it is shut (ADR 0036). The terminal and the panel keep their places
+  // underneath it, so opening it reflows nothing and the shell runs on.
+  const settings = settingsOpen ? { x: 0, y: 0, width, height } : { x: 0, y: 0, width: 0, height: 0 }
 
   return { terminal, panel, settings }
 }
@@ -139,7 +129,6 @@ module.exports = {
   BAND_MAX,
   COLLAPSED,
   TERMINAL_FLOOR,
-  SETTINGS,
   isPosition,
   isSide,
   defaultMeasure,

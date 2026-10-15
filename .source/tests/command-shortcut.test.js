@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { JarvisCore } from '../src/core/jarvis-core.js'
 import { agent, user, incoming } from '../src/core/events.js'
 import { effect } from '../src/core/effects.js'
-import { shortcut, defaults } from '../src/core/command-shortcut.js'
+import { shortcut, skill, defaults, isShortcut, repair } from '../src/core/command-shortcut.js'
 import { createPreferences } from '../src/core/preferences.js'
 import { hasEffect } from './helpers.js'
 
@@ -130,5 +130,45 @@ describe('storing Command shortcuts', () => {
     preferences.setShortcuts(mine)
 
     expect(preferences.shortcuts().map((each) => each.label)).toEqual(['Third', 'First', 'Second'])
+  })
+})
+
+describe('the icon on a Command or a Skill', () => {
+  it('is terminal-window on a new Command and lightning on a new Skill', () => {
+    expect(shortcut({ label: 'Recap', command: '/recap' }).glyph).toBe('terminal-window')
+    expect(skill({ label: 'tdd', command: '/tdd' }).glyph).toBe('lightning')
+  })
+
+  it('can be none, and a name it does not know is none', () => {
+    expect(shortcut({ label: 'Recap', command: '/recap', glyph: null }).glyph).toBeNull()
+    expect(skill({ label: 'tdd', command: '/tdd', glyph: 'not-an-icon' }).glyph).toBeNull()
+    expect(shortcut({ label: 'Recap', command: '/recap', glyph: 'rocket' }).glyph).toBe('rocket')
+  })
+
+  it('is one of their own on each built-in', () => {
+    expect(Object.fromEntries(defaults().map((each) => [each.label, each.glyph]))).toEqual({
+      Claude: 'terminal-window',
+      Continue: 'play',
+      Resume: 'clock-counter-clockwise',
+      Update: 'arrow-circle-up',
+      '/usage': 'gauge',
+      '/context': 'stack',
+      Exit: 'sign-out',
+    })
+  })
+
+  it('is kept by repair, a name it does not know turned to none', () => {
+    const stored = { id: 'a', label: 'Recap', command: '/recap', submits: true }
+    expect(isShortcut({ ...stored, glyph: 'rocket' })).toBe(true)
+    expect(repair({ ...stored, glyph: 'rocket' }).glyph).toBe('rocket')
+    expect(repair({ ...stored, glyph: null }).glyph).toBeNull()
+    expect(repair({ ...stored, glyph: 'not-an-icon' }).glyph).toBeNull()
+  })
+
+  it('is given to an entry stored before there were icons: a built-in its own, else its kind', () => {
+    const old = { id: 'built-in-exit', label: 'Exit', command: 'exit', submits: true }
+    expect(repair(old).glyph).toBe('sign-out')
+    expect(repair({ ...old, id: 'mine' }).glyph).toBe('terminal-window')
+    expect(repair({ ...old, id: 'mine' }, 'lightning').glyph).toBe('lightning')
   })
 })

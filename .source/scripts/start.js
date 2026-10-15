@@ -3,15 +3,10 @@
 // `npm start`, without the `.bin` shim.
 //
 // The obvious script is `electron .`, which npm resolves through
-// `node_modules/.bin`. Those shims are written by whichever machine installed:
-// Unix symlinks on a Mac, `.cmd` files on Windows. In a tree the two machines
-// share, the other machine's shims are the ones that are there, and `npm start`
-// fails with `'electron' is not recognized` — a sentence about a missing
-// program, on a machine where the program is fetched and present.
-//
-// So nothing is resolved by name. The runtime for this platform is fetched if
-// it is missing (scripts/platform-runtime.js) and started by full path, with
-// this folder as the app it should open.
+// `node_modules/.bin` to the runtime inside `node_modules`. Jarvis starts on
+// its own runtime instead, kept in `Windows/electron` (scripts/platform-runtime.js
+// says why), so nothing is resolved by name. The runtime is fetched if it is
+// missing and started by full path, with this folder as the app it should open.
 
 const { spawn } = require('node:child_process')
 const path = require('node:path')

@@ -8,23 +8,119 @@
 // first.
 
 const fs = require('node:fs')
+const path = require('node:path')
 const { readSettings, writeSettings, UnreadableSettingsError } = require('./settings-file')
+const planTool = require('./plan-tool')
 
 /**
- * The events Jarvis cares about. The generic notification is left out: it does
- * not carry the request's content and would duplicate the permission event.
+ * The events Jarvis cares about and Claude Code waits for. The generic
+ * notification is left out: it does not carry the request's content and would
+ * duplicate the permission event.
  *
  * `SessionStart` earns its place by being the only announcement that Claude
  * Code is up and listening — everything else arrives once the conversation is
  * already under way, which is too late to greet it with anything.
  */
-const EVENTS = Object.freeze([
+const WAITED_FOR = Object.freeze([
   'SessionStart',
   'Stop',
   'PermissionRequest',
   'UserPromptSubmit',
-  'SessionEnd',
 ])
+
+/**
+ * The goodbye, registered as asynchronous although only the panel reads it.
+ *
+ * Claude Code fires it on its way out, and a command that exits at once —
+ * `claude update` is the one that showed it — stops waiting almost
+ * immediately. A relay starting cold was cancelled there and the terminal
+ * printed "SessionEnd hook failed: Hook cancelled". Claude Code does not cancel
+ * an asynchronous hook, and still lets it finish: a relay that took a second to
+ * deliver was measured arriving after the process had gone. Nothing comes after
+ * a goodbye, so there is no order for it to break.
+ */
+const FAREWELL = 'SessionEnd'
+
+/**
+ * The events only the Deck reads: every tool call, every subagent, every
+ * compaction and every failed turn. A tool call is the thing Claude Code does
+ * most often, so these are registered as asynchronous — Claude Code starts the
+ * relay and carries on without waiting for it. The five above keep their shape:
+ * an answer read aloud has to arrive in order, and nothing about them changes.
+ * ADR 0033.
+ */
+const ASYNC_EVENTS = Object.freeze([
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'PermissionDenied',
+  'SubagentStart',
+  'SubagentStop',
+  'PreCompact',
+  'PostCompact',
+  'StopFailure',
+])
+
+const EVENTS = Object.freeze([...WAITED_FOR, FAREWELL, ...ASYNC_EVENTS])
+
+/** The events Claude Code is told not to wait for. */
+const NOT_WAITED_FOR = Object.freeze([FAREWELL, ...ASYNC_EVENTS])
+
+/**
+ * Jarvis's own plan tool, as Claude Code names it: the `update_plan` tool of
+ * the MCP server Connect registers as `jarvis` (Brain/PLAN.js).
+ */
+const PLAN_TOOL = planTool.FULL_NAME
+
+/** The flag that turns a run of the relay into the plan tool's approval. */
+const APPROVE_FLAG = '--approve-plan'
+
+/**
+ * The hooks Jarvis registers to answer rather than to listen — one, today: a
+ * PreToolUse matched to its own plan tool and nothing else, waited for, whose
+ * command prints "allow". The tool only draws a progress bar, and Claude Code
+ * would otherwise stop the work to ask about it in every project. The one
+ * permission Jarvis grants (ADR 0034).
+ */
+const APPROVALS = Object.freeze([
+  Object.freeze({ event: 'PreToolUse', matcher: `^${PLAN_TOOL}$`, flag: APPROVE_FLAG }),
+])
+
+function approvalCommand(command, approval) {
+  return `${command} ${approval.flag}`
+}
+
+/** An approval's group, exactly as it is written. */
+function approvalGroup(command, approval) {
+  return { matcher: approval.matcher, hooks: [{ type: 'command', command: approvalCommand(command, approval) }] }
+}
+
+/** Whether a group already in the file is an approval exactly as `approvalGroup` would write it. */
+function isCurrentApproval(event, group, command) {
+  return APPROVALS.some(
+    (approval) =>
+      approval.event === event &&
+      group.matcher === approval.matcher &&
+      group.hooks.length === 1 &&
+      group.hooks[0]?.type === 'command' &&
+      group.hooks[0].command === approvalCommand(command, approval) &&
+      group.hooks[0].async === undefined,
+  )
+}
+
+/** The one hook Jarvis registers on an event, exactly as it is written. */
+function hookFor(event, command) {
+  return NOT_WAITED_FOR.includes(event)
+    ? { type: 'command', command, async: true }
+    : { type: 'command', command }
+}
+
+/** Whether a hook already in the file is the one `hookFor` would write. */
+function isCurrentHook(event, hook, command) {
+  return (
+    hook?.command === command && (hook.async === true) === NOT_WAITED_FOR.includes(event)
+  )
+}
 
 /**
  * How a hook command is recognised as ours. On Windows the helper is Jarvis's
@@ -62,7 +158,7 @@ function helperCommandLine({ launcher }) {
  *
  * Named after the machine, and it has to be. The launcher names two absolute
  * paths — this machine's Electron, and this folder's relay — and the folder it
- * is written into is very often inside OneDrive or iCloud. Two machines writing
+ * is written into is very often inside OneDrive. Two machines writing
  * one name there is two machines overwriting each other: the last to sync wins,
  * and the other is left with a hook command pointing at an executable under a
  * user folder it does not have. Every event Claude Code reports then fails,
@@ -70,16 +166,32 @@ function helperCommandLine({ launcher }) {
  * machine's own, so a file only this machine writes is what keeps the two
  * agreeing.
  *
- * The machine's name is taken as far as its first dot — a Mac calls itself
- * `Something.local` — and anything a file name would not welcome is replaced.
+ * Anything in the machine's name a file name would not welcome is replaced.
  */
-function launcherName({ platform, machine }) {
-  const extension = platform === 'win32' ? 'cmd' : 'sh'
+function launcherName({ machine }) {
   const named = String(machine ?? '')
-    .split('.')[0]
     .replace(/[^A-Za-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return named === '' ? `hook-relay.${extension}` : `hook-relay-${named}.${extension}`
+  return named === '' ? 'hook-relay.cmd' : `hook-relay-${named}.cmd`
+}
+
+/**
+ * The launcher a hook command line names, when it has the shape
+ * `helperCommandLine` writes; null for any other shape.
+ */
+function launcherIn(command) {
+  const match = /^"([^"]+)" (\S+)$/.exec(command ?? '')
+  return match && match[2] === HELPER_FLAG ? match[1] : null
+}
+
+/**
+ * The Jarvis folder a launcher belongs to: the launcher is written into the
+ * folder's `.jarvis-data`, unless the data folder was kept somewhere else, in
+ * which case that folder is the best name there is.
+ */
+function folderOfLauncher(launcher) {
+  const data = path.dirname(launcher)
+  return path.basename(data) === '.jarvis-data' ? path.dirname(data) : data
 }
 
 function isJarvisGroup(group) {
@@ -92,11 +204,39 @@ function asGroups(value) {
   return Array.isArray(value) ? value.filter((each) => typeof each === 'object' && each !== null) : []
 }
 
+/** Whether one of our groups is exactly as an install for `command` writes it. */
+function isCurrentGroup(event, group, command) {
+  const listening =
+    EVENTS.includes(event) &&
+    !('matcher' in group) &&
+    group.hooks.length === 1 &&
+    isCurrentHook(event, group.hooks[0], command)
+  return listening || isCurrentApproval(event, group, command)
+}
+
+/** Whether `hooks` carries every hook and approval an install for `command` writes. */
+function installedFor(hooks, command) {
+  const listening = EVENTS.every((event) =>
+    asGroups(hooks[event]).some(
+      (group) =>
+        !('matcher' in group) &&
+        Array.isArray(group.hooks) &&
+        group.hooks.some((each) => isCurrentHook(event, each, command)),
+    ),
+  )
+  const approving = APPROVALS.every((approval) =>
+    asGroups(hooks[approval.event]).some(
+      (group) => Array.isArray(group.hooks) && isCurrentApproval(approval.event, group, command),
+    ),
+  )
+  return listening && approving
+}
+
 /**
  * @param command the hook command line to register — must carry the marker.
  * @param file    Claude Code's settings file.
  */
-function createInstaller({ command, file }) {
+function createInstaller({ command, file, exists = fs.existsSync }) {
   /**
    * A missing file is a legitimate starting point. A file that exists and cannot
    * be read is **not**: treating it as empty would make the next write wipe out
@@ -118,22 +258,50 @@ function createInstaller({ command, file }) {
     writeSettings(file, settings)
   }
 
-  function isInstalled() {
+  /** The hooks in the settings file, or null when there are none or it cannot be read. */
+  function currentHooks() {
     let settings
     try {
       settings = loadSettings()
     } catch {
-      return false
+      return null
     }
     const hooks = settings.hooks
-    if (typeof hooks !== 'object' || hooks === null) return false
+    return typeof hooks === 'object' && hooks !== null ? hooks : null
+  }
 
-    return EVENTS.every((event) =>
-      asGroups(hooks[event]).some(
-        (group) =>
-          Array.isArray(group.hooks) && group.hooks.some((each) => each?.command === command),
-      ),
+  function isInstalled() {
+    const hooks = currentHooks()
+    return hooks !== null && installedFor(hooks, command)
+  }
+
+  /**
+   * The folder of another Jarvis whose hooks these are, or null.
+   *
+   * Two Jarvis folders on one machine — the one the user runs and a checkout,
+   * say — write the same hooks, each naming its own launcher. Hooks current in
+   * every way but the launcher they name belong to a Jarvis that is connected
+   * and working: they are not out of date, and nothing here takes them over
+   * unasked. Only when that launcher is still there, though — one that is gone
+   * is a folder that moved or was deleted, and its hooks run nothing.
+   */
+  function elsewhere() {
+    const hooks = currentHooks()
+    if (hooks === null) return null
+    const ours = Object.keys(hooks).flatMap((event) =>
+      asGroups(hooks[event])
+        .filter(isJarvisGroup)
+        .map((group) => ({ event, group })),
     )
+    if (ours.length === 0) return null
+    const first = ours[0].group.hooks.find((each) => typeof each?.command === 'string' && each.command.includes(MARKER))
+    const theirs = first.command.endsWith(` ${APPROVE_FLAG}`) ? first.command.slice(0, -(APPROVE_FLAG.length + 1)) : first.command
+    if (theirs === command) return null
+    const launcher = launcherIn(theirs)
+    if (launcher === null) return null
+    const exact = ours.every(({ event, group }) => isCurrentGroup(event, group, theirs))
+    if (!exact || !installedFor(hooks, theirs) || !exists(launcher)) return null
+    return folderOfLauncher(launcher)
   }
 
   /**
@@ -170,8 +338,11 @@ function createInstaller({ command, file }) {
 
     for (const event of EVENTS) {
       const groups = asGroups(hooks[event])
-      groups.push({ hooks: [{ type: 'command', command }] })
+      groups.push({ hooks: [hookFor(event, command)] })
       hooks[event] = groups
+    }
+    for (const approval of APPROVALS) {
+      hooks[approval.event] = [...asGroups(hooks[approval.event]), approvalGroup(command, approval)]
     }
 
     write({ ...settings, hooks })
@@ -179,38 +350,36 @@ function createInstaller({ command, file }) {
 
   /**
    * Whether Claude Code is carrying a hook of ours that no longer says what it
-   * should — an older command line, an event Jarvis has stopped asking for, or
-   * ours on some events and missing from others.
+   * should — an older command line, an event Jarvis has stopped asking for, a
+   * hook waited for that should not be or the other way round, or ours on some
+   * events and missing from others. An install made before the Deck is the
+   * last of these: the five without the nine. So is one made before the plan
+   * tool, without its approval.
    *
    * The distinction from `isInstalled` is the whole point. A settings file with
    * no hook of ours in it is not stale, it is simply not connected, and
    * connecting is the user's to press. Only a hook already there is ours to keep
-   * current.
+   * current. Nor is one another Jarvis folder wrote, current but for the
+   * launcher it names (`elsewhere`): that Jarvis is connected, and taking it
+   * over is the user's to press as well.
    */
   function isStale() {
-    let settings
-    try {
-      settings = loadSettings()
-    } catch {
-      return false
-    }
-    const hooks = settings.hooks
-    if (typeof hooks !== 'object' || hooks === null) return false
+    const hooks = currentHooks()
+    if (hooks === null) return false
 
     let found = false
+    let current = true
     for (const event of Object.keys(hooks)) {
       for (const group of asGroups(hooks[event])) {
         if (!isJarvisGroup(group)) continue
         found = true
-        const current =
-          EVENTS.includes(event) &&
-          group.hooks.length === 1 &&
-          group.hooks[0]?.command === command
-        if (!current) return true
+        if (!isCurrentGroup(event, group, command)) current = false
       }
     }
-
-    return found && !isInstalled()
+    if (!found) return false
+    if (current && installedFor(hooks, command)) return false
+    // Another Jarvis's own, and working: not ours to call old.
+    return elsewhere() === null
   }
 
   /**
@@ -246,7 +415,7 @@ function createInstaller({ command, file }) {
     write(remaining)
   }
 
-  return { install, uninstall, upgrade, isInstalled, isStale, command, file }
+  return { install, uninstall, upgrade, isInstalled, isStale, elsewhere, command, file }
 }
 
 module.exports = {
@@ -255,6 +424,11 @@ module.exports = {
   launcherName,
   UnreadableSettingsError,
   EVENTS,
+  ASYNC_EVENTS,
+  NOT_WAITED_FOR,
   MARKER,
   HELPER_FLAG,
+  PLAN_TOOL,
+  APPROVE_FLAG,
+  APPROVALS,
 }
