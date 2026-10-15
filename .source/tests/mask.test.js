@@ -38,7 +38,8 @@ describe('what is masked', () => {
       'github_pat_11ABCDEFG0123456789_abcdefghijklmnop',
       'xoxb-1234567890-abcdefghij',
       'AKIAIOSFODNN7EXAMPLE',
-      'AIzaSyA-1234567890abcdefghijklmnopqrstu',
+      // Split so GitHub's secret scanning does not take the made-up key for a real one.
+      'AIza' + 'SyA-1234567890abcdefghijklmnopqrstu',
       'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl',
     ]) {
       expect(masked(`echo ${secret} done`)).toBe(`echo ${HIDDEN} done`)
